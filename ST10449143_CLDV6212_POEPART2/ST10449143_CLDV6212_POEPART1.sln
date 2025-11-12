@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35707.178
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ST10449143_CLDV6212_POEPART1", "ST10449143_CLDV6212_POEPART1.csproj", "{545F71A5-B378-4175-AE53-90C8F76847A2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ST10449143_CLDV6212_POEPART2.Functions", "..\ST10449143_CLDV6212_POEPART2.Functions\ST10449143_CLDV6212_POEPART2.Functions.csproj", "{EC8FDFFA-DA73-4904-8081-810AFC433E0E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{545F71A5-B378-4175-AE53-90C8F76847A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{545F71A5-B378-4175-AE53-90C8F76847A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{545F71A5-B378-4175-AE53-90C8F76847A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{545F71A5-B378-4175-AE53-90C8F76847A2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EC8FDFFA-DA73-4904-8081-810AFC433E0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC8FDFFA-DA73-4904-8081-810AFC433E0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC8FDFFA-DA73-4904-8081-810AFC433E0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC8FDFFA-DA73-4904-8081-810AFC433E0E}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {058A53D2-B261-4DC0-A79D-122BB32B08DB}
+	EndGlobalSection
+EndGlobal
