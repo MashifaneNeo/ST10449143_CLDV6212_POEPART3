@@ -1,0 +1,251 @@
+﻿@model ST10449143_CLDV6212_POEPART1.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Register";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title text-center mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Create Your ABC Retail Account
+                </h3>
+            </div>
+            <div class="card-body p-4">
+                <form asp-action="Register" method="post">
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="FirstName" class="form-label fw-semibold"></label>
+                                <input asp-for="FirstName" class="form-control form-control-lg" placeholder="Enter your first name" />
+                                <span asp-validation-for="FirstName" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="LastName" class="form-label fw-semibold"></label>
+                                <input asp-for="LastName" class="form-control form-control-lg" placeholder="Enter your last name" />
+                                <span asp-validation-for="LastName" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Username" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            <input asp-for="Username" class="form-control form-control-lg" placeholder="Choose a username" />
+                        </div>
+                        <span asp-validation-for="Username" class="text-danger small"></span>
+                        <div class="form-text">Your username must be at least 3 characters long.</div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label asp-for="Email" class="form-label fw-semibold"></label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                            <input asp-for="Email" class="form-control form-control-lg" placeholder="Enter your email address" />
+                        </div>
+                        <span asp-validation-for="Email" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label asp-for="Password" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input asp-for="Password" class="form-control form-control-lg" placeholder="Create a password" />
+                                </div>
+                                <span asp-validation-for="Password" class="text-danger small"></span>
+                                <div class="form-text">Must be at least 6 characters long.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-4">
+                                <label asp-for="ConfirmPassword" class="form-label fw-semibold"></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-check-circle"></i></span>
+                                    <input asp-for="ConfirmPassword" class="form-control form-control-lg" placeholder="Confirm your password" />
+                                </div>
+                                <span asp-validation-for="ConfirmPassword" class="text-danger small"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                            <label class="form-check-label" for="termsCheck">
+                                I agree to the <a href="#" class="text-primary">Terms of Service</a> and <a href="#" class="text-primary">Privacy Policy</a>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
+                        <a asp-action="Login" class="btn btn-outline-secondary btn-lg">
+                            <i class="fas fa-sign-in-alt me-2"></i>Back to Login
+                        </a>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center bg-light">
+                <p class="mb-0 text-muted">
+                    Already have an account?
+                    <a asp-action="Login" class="text-primary fw-semibold">Sign in here</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Registration Benefits -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title text-center mb-3">
+                            <i class="fas fa-star text-warning me-2"></i>Benefits of Registering
+                        </h5>
+                        <div class="row text-center">
+                            <div class="col-md-3 mb-3">
+                                <i class="fas fa-shopping-cart fa-2x text-primary mb-2"></i>
+                                <h6>Easy Ordering</h6>
+                                <p class="small text-muted mb-0">Quick and secure checkout process</p>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <i class="fas fa-history fa-2x text-success mb-2"></i>
+                                <h6>Order History</h6>
+                                <p class="small text-muted mb-0">Track your past purchases</p>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <i class="fas fa-tags fa-2x text-info mb-2"></i>
+                                <h6>Exclusive Deals</h6>
+                                <p class="small text-muted mb-0">Special offers for registered users</p>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <i class="fas fa-shipping-fast fa-2x text-warning mb-2"></i>
+                                <h6>Fast Shipping</h6>
+                                <p class="small text-muted mb-0">Save your shipping preferences</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        // Password strength indicator (optional enhancement)
+        document.getElementById('Password')?.addEventListener('input', function() {
+            const password = this.value;
+            const strengthIndicator = document.getElementById('passwordStrength');
+
+            if (!strengthIndicator) {
+                // Create strength indicator if it doesn't exist
+                const indicator = document.createElement('div');
+                indicator.id = 'passwordStrength';
+                indicator.className = 'form-text';
+                this.parentNode.appendChild(indicator);
+            }
+
+            const indicator = document.getElementById('passwordStrength');
+            let strength = 'Weak';
+            let color = 'text-danger';
+
+            if (password.length >= 8) {
+                strength = 'Medium';
+                color = 'text-warning';
+            }
+            if (password.length >= 10 && /[A-Z]/.test(password) && /[0-9]/.test(password)) {
+                strength = 'Strong';
+                color = 'text-success';
+            }
+
+            indicator.innerHTML = `Password strength: <span class="${color} fw-semibold">${strength}</span>`;
+        });
+
+        // Terms and conditions validation
+        document.querySelector('form')?.addEventListener('submit', function(e) {
+            const termsCheck = document.getElementById('termsCheck');
+            if (!termsCheck.checked) {
+                e.preventDefault();
+                alert('Please agree to the Terms of Service and Privacy Policy to continue.');
+                termsCheck.focus();
+            }
+        });
+
+        // Real-time password confirmation check
+        document.getElementById('ConfirmPassword')?.addEventListener('input', function() {
+            const password = document.getElementById('Password').value;
+            const confirmPassword = this.value;
+            const confirmationField = this;
+
+            if (confirmPassword && password !== confirmPassword) {
+                confirmationField.classList.add('is-invalid');
+                confirmationField.classList.remove('is-valid');
+            } else if (confirmPassword) {
+                confirmationField.classList.add('is-valid');
+                confirmationField.classList.remove('is-invalid');
+            } else {
+                confirmationField.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+    </script>
+
+    <style>
+        .form-control-lg {
+            border-radius: 0.5rem;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+            .form-control-lg:focus {
+                border-color: #0d6efd;
+                box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+            }
+
+        .form-control.is-valid {
+            border-color: #198754;
+        }
+
+        .form-control.is-invalid {
+            border-color: #dc3545;
+        }
+
+        .card {
+            border: none;
+            border-radius: 1rem;
+        }
+
+        .card-header {
+            border-radius: 1rem 1rem 0 0 !important;
+            padding: 1.5rem;
+        }
+
+        .btn-lg {
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+        }
+
+        .input-group-text {
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-right: none;
+        }
+
+        .form-control-lg {
+            border-left: none;
+        }
+    </style>
+}
