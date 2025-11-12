@@ -14,9 +14,28 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _api = api;
         }
 
+        // Authentication helpers
+        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
+        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
+        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
+        private string CurrentUsername => HttpContext.Session.GetString("Username") ?? string.Empty;
+
         public async Task<IActionResult> Index(string searchString)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to view orders.";
+                return RedirectToAction("Login", "Account");
+            }
+
             var orders = await _api.GetOrdersAsync();
+
+            // If user is not admin, only show their orders
+            if (!IsAdmin)
+            {
+                // Filter orders by current user (you may need to adjust this logic based on your data structure)
+                orders = orders.Where(o => o.Username == CurrentUsername).ToList();
+            }
 
             if (!string.IsNullOrEmpty(searchString))
             {
@@ -27,11 +46,18 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 ).ToList();
             }
 
+            ViewBag.IsAdmin = IsAdmin;
             return View(orders);
         }
 
         public async Task<IActionResult> Create()
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to create orders.";
+                return RedirectToAction("Login", "Account");
+            }
+
             var customers = await _api.GetCustomersAsync();
             var products = await _api.GetProductsAsync();
 
@@ -47,6 +73,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to create orders.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -67,6 +99,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         public async Task<IActionResult> Details(string id)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to view order details.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (string.IsNullOrEmpty(id))
             {
                 return NotFound();
@@ -78,11 +116,30 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 return NotFound();
             }
 
+            // Check if user has permission to view this order
+            if (!IsAdmin && order.Username != CurrentUsername)
+            {
+                TempData["Error"] = "Access denied. You can only view your own orders.";
+                return RedirectToAction(nameof(Index));
+            }
+
             return View(order);
         }
 
         public async Task<IActionResult> Edit(string id)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to edit orders.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (!IsAdmin)
+            {
+                TempData["Error"] = "Access denied. Only administrators can edit orders.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (string.IsNullOrEmpty(id))
             {
                 return NotFound();
@@ -101,6 +158,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Order order)
         {
+            if (!IsAuthenticated || !IsAdmin)
+            {
+                TempData["Error"] = "Access denied.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -120,6 +183,18 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to delete orders.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (!IsAdmin)
+            {
+                TempData["Error"] = "Access denied. Only administrators can delete orders.";
+                return RedirectToAction(nameof(Index));
+            }
+
             try
             {
                 await _api.DeleteOrderAsync(id);
@@ -135,6 +210,11 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpGet]
         public async Task<JsonResult> GetProductPrice(string productId)
         {
+            if (!IsAuthenticated)
+            {
+                return Json(new { success = false, message = "Authentication required" });
+            }
+
             try
             {
                 var product = await _api.GetProductAsync(productId);
@@ -159,6 +239,11 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateOrderStatus(string id, string newStatus)
         {
+            if (!IsAuthenticated || !IsAdmin)
+            {
+                return Json(new { success = false, message = "Access denied" });
+            }
+
             try
             {
                 await _api.UpdateOrderStatusAsync(id, newStatus);

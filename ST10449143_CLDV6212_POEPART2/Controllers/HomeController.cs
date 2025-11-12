@@ -17,6 +17,11 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _logger = logger;
         }
 
+        // Authentication helpers
+        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
+        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
+        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
+
         public async Task<IActionResult> Index()
         {
             try
@@ -39,6 +44,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     OrderCount = orders.Count
                 };
 
+                // Add user info to ViewBag for display
+                ViewBag.IsAuthenticated = IsAuthenticated;
+                ViewBag.Username = HttpContext.Session.GetString("Username");
+                ViewBag.Role = HttpContext.Session.GetString("Role");
+                ViewBag.FullName = HttpContext.Session.GetString("FullName");
+
                 return View(vm);
             }
             catch (Exception ex)
@@ -51,11 +62,13 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         public IActionResult Privacy()
         {
+            // Privacy page is public
             return View();
         }
 
         public IActionResult Contact()
         {
+            // Contact page is public
             return View();
         }
 
@@ -63,6 +76,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        // New action for unauthorized access
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }

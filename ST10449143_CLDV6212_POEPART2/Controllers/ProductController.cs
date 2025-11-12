@@ -15,8 +15,20 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _logger = logger;
         }
 
+        // Authentication helpers
+        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
+        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
+        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
+
         public async Task<IActionResult> Index(string searchString)
         {
+            // Products are visible to all authenticated users
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to browse products.";
+                return RedirectToAction("Login", "Account");
+            }
+
             var products = await _api.GetProductsAsync();
 
             if (!string.IsNullOrEmpty(searchString))
@@ -27,11 +39,24 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 ).ToList();
             }
 
+            ViewBag.IsAdmin = IsAdmin;
             return View(products);
         }
 
         public IActionResult Create()
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to create products.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (!IsAdmin)
+            {
+                TempData["Error"] = "Access denied. Admin privileges required to create products.";
+                return RedirectToAction(nameof(Index));
+            }
+
             return View();
         }
 
@@ -39,6 +64,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Product product, IFormFile? imageFile)
         {
+            if (!IsAuthenticated || !IsAdmin)
+            {
+                TempData["Error"] = "Access denied.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -64,6 +95,18 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         public async Task<IActionResult> Edit(string id)
         {
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to edit products.";
+                return RedirectToAction("Login", "Account");
+            }
+
+            if (!IsAdmin)
+            {
+                TempData["Error"] = "Access denied. Admin privileges required to edit products.";
+                return RedirectToAction(nameof(Index));
+            }
+
             if (string.IsNullOrEmpty(id))
                 return NotFound();
 
@@ -78,6 +121,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Product product, IFormFile? imageFile)
         {
+            if (!IsAuthenticated || !IsAdmin)
+            {
+                TempData["Error"] = "Access denied.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (ModelState.IsValid)
             {
                 try
@@ -97,6 +146,13 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         public async Task<IActionResult> Details(string id)
         {
+            // Product details are visible to all authenticated users
+            if (!IsAuthenticated)
+            {
+                TempData["Error"] = "Please login to view product details.";
+                return RedirectToAction("Login", "Account");
+            }
+
             if (string.IsNullOrEmpty(id))
                 return NotFound();
 
@@ -104,12 +160,19 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             if (product == null)
                 return NotFound();
 
+            ViewBag.IsAdmin = IsAdmin;
             return View(product);
         }
 
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
+            if (!IsAuthenticated || !IsAdmin)
+            {
+                TempData["Error"] = "Access denied.";
+                return RedirectToAction("Login", "Account");
+            }
+
             try
             {
                 await _api.DeleteProductAsync(id);
