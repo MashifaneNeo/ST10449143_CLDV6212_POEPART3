@@ -16,8 +16,19 @@ builder.Services.AddHttpClient("Functions", (sp, client) =>
     client.Timeout = TimeSpan.FromSeconds(100);
 });
 
-// Use the typed client (replaces IAzureStorageService)
+// Register services
 builder.Services.AddScoped<IFunctionsApi, FunctionsApiClient>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+
+// Session configuration for authentication
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30); // Session timeout
+    options.Cookie.HttpOnly = true; // Prevent XSS
+    options.Cookie.IsEssential = true; // GDPR compliance
+    options.Cookie.SameSite = SameSiteMode.Strict; // CSRF protection
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Require HTTPS in production
+});
 
 // Allow larger multipart uploads
 builder.Services.Configure<FormOptions>(o =>
@@ -25,6 +36,7 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
 });
 
+// Logging
 builder.Services.AddLogging();
 
 var app = builder.Build();
@@ -34,17 +46,26 @@ var culture = new CultureInfo("en-US");
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;
 
-// Pipeline
+// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+else
+{
+    app.UseDeveloperExceptionPage();
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
 app.UseRouting();
+
 app.UseAuthorization();
+
+// Add session middleware - MUST be after UseRouting and before UseEndpoints
+app.UseSession();
 
 app.MapControllerRoute(
     name: "default",
