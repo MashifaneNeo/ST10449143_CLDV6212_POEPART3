@@ -156,7 +156,7 @@ else
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form id="deleteForm" method="post" style="display: inline;">
+                <form id="deleteForm" asp-action="Delete" method="post" style="display: inline;">
                     <input type="hidden" name="id" id="productId" />
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-danger">Delete</button>
@@ -171,6 +171,11 @@ else
         function confirmDelete(productId, productName) {
             document.getElementById('productName').textContent = productName;
             document.getElementById('productId').value = productId;
+
+            // Set the form action dynamically
+            const deleteForm = document.getElementById('deleteForm');
+            deleteForm.action = '/Product/Delete/' + productId;
+
             new bootstrap.Modal(document.getElementById('deleteModal')).show();
         }
 
@@ -190,34 +195,6 @@ else
                     }
                 })
                 .catch(error => console.error('Error updating cart summary:', error));
-        }
-
-        // Quick add to cart functionality
-        function quickAddToCart(productId, productName) {
-            const form = document.createElement('form');
-            form.method = 'post';
-            form.action = '@Url.Action("AddToCart", "Cart")';
-
-            const productIdInput = document.createElement('input');
-            productIdInput.type = 'hidden';
-            productIdInput.name = 'productId';
-            productIdInput.value = productId;
-
-            const quantityInput = document.createElement('input');
-            quantityInput.type = 'hidden';
-            quantityInput.name = 'quantity';
-            quantityInput.value = '1';
-
-            const tokenInput = document.createElement('input');
-            tokenInput.type = 'hidden';
-            tokenInput.name = '__RequestVerificationToken';
-            tokenInput.value = document.querySelector('input[name="__RequestVerificationToken"]').value;
-
-            form.appendChild(productIdInput);
-            form.appendChild(quantityInput);
-            form.appendChild(tokenInput);
-            document.body.appendChild(form);
-            form.submit();
         }
     </script>
 }
