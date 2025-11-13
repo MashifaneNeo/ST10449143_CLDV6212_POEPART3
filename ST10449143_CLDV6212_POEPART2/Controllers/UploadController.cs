@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Services;
+using ST10449143_CLDV6212_POEPART1.Helpers;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
@@ -13,66 +14,74 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _api = api;
         }
 
-        // Authentication helpers
-        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
-        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
-        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
-        private string CurrentUsername => HttpContext.Session.GetString("Username") ?? string.Empty;
+        private void CheckAdminAccess()
+        {
+            if (!AuthorizationHelper.IsAuthenticated(HttpContext))
+            {
+                TempData["Error"] = "Please login to access uploads.";
+                throw new UnauthorizedAccessException("Authentication required.");
+            }
+
+            if (!AuthorizationHelper.IsAdmin(HttpContext))
+            {
+                TempData["Error"] = "Admin privileges required to access file uploads.";
+                throw new UnauthorizedAccessException("Admin access required.");
+            }
+        }
 
         public IActionResult Index()
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to upload files.";
-                return RedirectToAction("Login", "Account");
+                CheckAdminAccess();
+                return View(new FileUploadModel());
             }
-
-            return View(new FileUploadModel());
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Index(FileUploadModel model)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to upload files.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (ModelState.IsValid)
-            {
-                try
+                if (ModelState.IsValid)
                 {
-                    if (model.ProofOfPayment != null && model.ProofOfPayment.Length > 0)
+                    try
                     {
-                        // Auto-populate customer name if not provided
-                        if (string.IsNullOrEmpty(model.CustomerName))
+                        if (model.ProofOfPayment != null && model.ProofOfPayment.Length > 0)
                         {
-                            model.CustomerName = HttpContext.Session.GetString("FullName") ?? CurrentUsername;
+                            var fileName = await _api.UploadProofOfPaymentAsync(
+                                model.ProofOfPayment,
+                                model.OrderId,
+                                model.CustomerName
+                            );
+
+                            TempData["Success"] = $"File uploaded successfully! File name: {fileName}";
+                            return View(new FileUploadModel());
                         }
-
-                        var fileName = await _api.UploadProofOfPaymentAsync(
-                            model.ProofOfPayment,
-                            model.OrderId,
-                            model.CustomerName
-                        );
-
-                        TempData["Success"] = $"File uploaded successfully! File name: {fileName}";
-                        return View(new FileUploadModel());
+                        else
+                        {
+                            ModelState.AddModelError("ProofOfPayment", "Please select a file to upload.");
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        ModelState.AddModelError("ProofOfPayment", "Please select a file to upload.");
+                        ModelState.AddModelError("", $"Error uploading file: {ex.Message}");
                     }
                 }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error uploading file: {ex.Message}");
-                }
-            }
 
-            return View(model);
+                return View(model);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
         }
     }
 }

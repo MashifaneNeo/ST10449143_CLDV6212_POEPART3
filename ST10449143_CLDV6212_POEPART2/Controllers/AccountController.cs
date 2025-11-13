@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Services;
+using ST10449143_CLDV6212_POEPART1.Helpers;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
@@ -16,6 +17,14 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpGet]
         public IActionResult Login()
         {
+            // If user is already logged in, redirect to appropriate page
+            if (AuthorizationHelper.IsAuthenticated(HttpContext))
+            {
+                if (AuthorizationHelper.IsAdmin(HttpContext))
+                    return RedirectToAction("Index", "Home");
+                else
+                    return RedirectToAction("Index", "Product");
+            }
             return View();
         }
 
@@ -49,6 +58,10 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpGet]
         public IActionResult Register()
         {
+            if (AuthorizationHelper.IsAuthenticated(HttpContext))
+            {
+                return RedirectToAction("Index", "Home");
+            }
             return View();
         }
 
@@ -70,11 +83,18 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         }
 
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
             TempData["Success"] = "You have been logged out successfully.";
             return RedirectToAction("Index", "Home");
+        }
+
+        [HttpGet]
+        public IActionResult AccessDenied()
+        {
+            return View();
         }
     }
 }

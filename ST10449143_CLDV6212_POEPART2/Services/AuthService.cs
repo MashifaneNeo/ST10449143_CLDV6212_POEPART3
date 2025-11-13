@@ -35,15 +35,16 @@ namespace ST10449143_CLDV6212_POEPART1.Services
 
             // Insert new user
             var insertCmd = new SqlCommand(@"
-                INSERT INTO Users (Username, Email, PasswordHash, FirstName, LastName, Role)
-                VALUES (@Username, @Email, @PasswordHash, @FirstName, @LastName, 'Customer')",
-                connection);
+        INSERT INTO Users (Username, Email, PasswordHash, FirstName, LastName, Role)
+        VALUES (@Username, @Email, @PasswordHash, @FirstName, @LastName, @Role)",
+        connection);
 
             insertCmd.Parameters.AddWithValue("@Username", model.Username);
             insertCmd.Parameters.AddWithValue("@Email", model.Email);
             insertCmd.Parameters.AddWithValue("@PasswordHash", passwordHash);
             insertCmd.Parameters.AddWithValue("@FirstName", model.FirstName);
             insertCmd.Parameters.AddWithValue("@LastName", model.LastName);
+            insertCmd.Parameters.AddWithValue("@Role", model.Role);
 
             var result = await insertCmd.ExecuteNonQueryAsync();
             return result > 0;

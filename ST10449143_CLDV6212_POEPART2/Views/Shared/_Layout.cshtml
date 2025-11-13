@@ -12,17 +12,38 @@
             font-weight: bold;
             color: #ff6a00 !important;
         }
+
         .user-welcome {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 20px;
             padding: 5px 15px;
             margin-right: 10px;
         }
+
         .nav-link {
             transition: color 0.3s ease;
         }
-        .nav-link:hover {
-            color: #ff6a00 !important;
+
+            .nav-link:hover {
+                color: #ff6a00 !important;
+            }
+
+        .role-badge {
+            font-size: 0.7em;
+            padding: 2px 8px;
+        }
+
+        .dropdown-item {
+            transition: all 0.2s ease;
+        }
+
+            .dropdown-item:hover {
+                background-color: #ff6a00;
+                color: white;
+            }
+
+        .nav-item.dropdown:hover .dropdown-menu {
+            display: block;
         }
     </style>
 </head>
@@ -60,28 +81,34 @@
                             {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
-                                        <i class="fas fa-cog me-1"></i>Admin
+                                        <i class="fas fa-cog me-1"></i>Admin Panel
                                     </a>
-                                    <ul class="dropdown-menu">
+                                    <ul class="dropdown-menu" aria-labelledby="adminDropdown">
                                         <li>
                                             <a class="dropdown-item" asp-controller="Customer" asp-action="Index">
-                                                <i class="fas fa-users me-1"></i>Manage Customers
+                                                <i class="fas fa-users me-2"></i>Manage Customers
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-controller="Product" asp-action="Index">
-                                                <i class="fas fa-box me-1"></i>Manage Products
+                                                <i class="fas fa-box me-2"></i>Manage Products
                                             </a>
                                         </li>
                                         <li>
                                             <a class="dropdown-item" asp-controller="Order" asp-action="Index">
-                                                <i class="fas fa-shopping-cart me-1"></i>Manage Orders
+                                                <i class="fas fa-shopping-cart me-2"></i>Manage Orders
                                             </a>
                                         </li>
                                         <li><hr class="dropdown-divider"></li>
                                         <li>
                                             <a class="dropdown-item" asp-controller="Upload" asp-action="Index">
-                                                <i class="fas fa-upload me-1"></i>File Upload
+                                                <i class="fas fa-upload me-2"></i>File Upload
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Account" asp-action="Register">
+                                                <i class="fas fa-user-plus me-2"></i>Create New User
                                             </a>
                                         </li>
                                     </ul>
@@ -96,8 +123,13 @@
                                     </a>
                                 </li>
                                 <li class="nav-item">
+                                    <a class="nav-link" asp-controller="Order" asp-action="Index">
+                                        <i class="fas fa-history me-1"></i>My Orders
+                                    </a>
+                                </li>
+                                <li class="nav-item">
                                     <a class="nav-link" asp-controller="Upload" asp-action="Index">
-                                        <i class="fas fa-upload me-1"></i>Upload Payment
+                                        <i class="fas fa-receipt me-1"></i>Upload Payment
                                     </a>
                                 </li>
                             }
@@ -119,25 +151,59 @@
                     <div class="navbar-nav ms-auto">
                         @if (!string.IsNullOrEmpty(Context.Session.GetString("UserId")))
                         {
-                            <!-- User is logged in -->
-                            <div class="d-flex align-items-center">
-                                <span class="user-welcome text-light">
-                                    <i class="fas fa-user-circle me-1"></i>
-                                    Hello, @Context.Session.GetString("Username")!
-                                    <small class="text-warning ms-1">(@Context.Session.GetString("Role"))</small>
-                                </span>
-                                <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
-                                    <button type="submit" class="btn btn-outline-light btn-sm">
-                                        <i class="fas fa-sign-out-alt me-1"></i>Logout
-                                    </button>
-                                </form>
+                            <!-- User is logged in - Enhanced User Dropdown -->
+                            <div class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+                                    <div class="user-welcome text-light me-2">
+                                        <i class="fas fa-user-circle me-1"></i>
+                                        @Context.Session.GetString("Username")
+                                        <span class="badge @(Context.Session.GetString("Role") == "Admin" ? "bg-warning" : "bg-info") role-badge ms-1">
+                                            @Context.Session.GetString("Role")
+                                        </span>
+                                    </div>
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                                    <li>
+                                        <span class="dropdown-item-text">
+                                            <small class="text-muted">Signed in as</small><br>
+                                            <strong>@Context.Session.GetString("Username")</strong>
+                                        </span>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item" href="#">
+                                            <i class="fas fa-user me-2"></i>My Profile
+                                        </a>
+                                    </li>
+                                    @if (Context.Session.GetString("Role") == "Customer")
+                                    {
+                                        <li>
+                                            <a class="dropdown-item" asp-controller="Order" asp-action="Index">
+                                                <i class="fas fa-history me-2"></i>Order History
+                                            </a>
+                                        </li>
+                                    }
+                                    <li>
+                                        <a class="dropdown-item" href="#">
+                                            <i class="fas fa-cog me-2"></i>Settings
+                                        </a>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline w-100">
+                                            <button type="submit" class="dropdown-item border-0 bg-transparent w-100 text-start">
+                                                <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                            </button>
+                                        </form>
+                                    </li>
+                                </ul>
                             </div>
                         }
                         else
                         {
                             <!-- User is not logged in -->
-                            <div class="d-flex align-items-center">
-                                <a class="btn btn-outline-light me-2 btn-sm" asp-controller="Account" asp-action="Login">
+                            <div class="d-flex align-items-center gap-2">
+                                <a class="btn btn-outline-light btn-sm" asp-controller="Account" asp-action="Login">
                                     <i class="fas fa-sign-in-alt me-1"></i>Login
                                 </a>
                                 <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Register">
@@ -156,9 +222,12 @@
         @if (TempData["Success"] != null)
         {
             <div class="container mt-3">
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <i class="fas fa-check-circle me-2"></i>@TempData["Success"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle me-2 fs-5"></i>
+                        <div class="flex-grow-1">@TempData["Success"]</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 </div>
             </div>
         }
@@ -166,9 +235,12 @@
         @if (TempData["Error"] != null)
         {
             <div class="container mt-3">
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                    <i class="fas fa-exclamation-triangle me-2"></i>@TempData["Error"]
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-2 fs-5"></i>
+                        <div class="flex-grow-1">@TempData["Error"]</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
                 </div>
             </div>
         }
@@ -176,18 +248,33 @@
         @RenderBody()
     </main>
 
-    <footer class="border-top footer text-muted bg-dark text-light">
+    <footer class="border-top footer text-muted bg-dark text-light mt-5">
         <div class="container py-4">
-            <div class="row">
+            <div class="row align-items-center">
                 <div class="col-md-6">
-                    <h6 class="text-warning">ABC Retail</h6>
-                    <p class="mb-0">Your trusted partner for quality products and exceptional service.</p>
+                    <h6 class="text-warning mb-2">
+                        <i class="fas fa-store me-2"></i>ABC Retail
+                    </h6>
+                    <p class="mb-0 text-light opacity-75">
+                        Your trusted partner for quality products and exceptional service since 2024.
+                    </p>
                 </div>
                 <div class="col-md-6 text-md-end">
-                    <p class="mb-0">
-                        &copy; 2024 ABC Retail -
-                        <a asp-controller="Home" asp-action="Privacy" class="text-light">Privacy Policy</a> |
-                        <a asp-controller="Home" asp-action="Contact" class="text-light">Contact Us</a>
+                    <div class="d-flex flex-column flex-md-row justify-content-md-end gap-2">
+                        <a asp-controller="Home" asp-action="Privacy" class="text-light text-decoration-none">
+                            <i class="fas fa-shield-alt me-1"></i>Privacy Policy
+                        </a>
+                        <span class="d-none d-md-inline text-light opacity-50">|</span>
+                        <a asp-controller="Home" asp-action="Contact" class="text-light text-decoration-none">
+                            <i class="fas fa-envelope me-1"></i>Contact Us
+                        </a>
+                        <span class="d-none d-md-inline text-light opacity-50">|</span>
+                        <span class="text-light opacity-75">
+                            <i class="fas fa-code me-1"></i>Built with ASP.NET Core
+                        </span>
+                    </div>
+                    <p class="mb-0 mt-2 text-light opacity-75">
+                        &copy; 2024 ABC Retail. All rights reserved.
                     </p>
                 </div>
             </div>
@@ -197,7 +284,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <!-- Session timeout warning script -->
+    <!-- Enhanced Session and Navigation Scripts -->
     <script>
         // Check for session timeout
         function checkSession() {
@@ -212,38 +299,95 @@
         }
 
         function showSessionExpiredWarning() {
+            // Remove any existing warnings
+            const existingWarning = document.querySelector('.session-warning');
+            if (existingWarning) {
+                existingWarning.remove();
+            }
+
             const warning = document.createElement('div');
-            warning.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3';
+            warning.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 session-warning';
             warning.style.zIndex = '1060';
+            warning.style.minWidth = '400px';
             warning.innerHTML = `
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Your session has expired. Please <a href="@Url.Action("Login", "Account")" class="alert-link">login again</a>.
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-clock me-2 fs-5"></i>
+                    <div class="flex-grow-1">
+                        <strong>Session Expired</strong><br>
+                        Your session has ended. Please <a href="@Url.Action("Login", "Account")" class="alert-link">login again</a> to continue.
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
             `;
             document.body.appendChild(warning);
 
-            // Auto-remove after 10 seconds
+            // Auto-remove after 15 seconds
             setTimeout(() => {
                 if (warning.parentNode) {
                     warning.parentNode.removeChild(warning);
                 }
-            }, 10000);
+            }, 15000);
         }
 
-        // Check session every 5 minutes
-        setInterval(checkSession, 300000);
-
-        // Add active class to current page nav link
+        // Enhanced active link highlighting
         document.addEventListener('DOMContentLoaded', function() {
             const currentUrl = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link');
+            const navLinks = document.querySelectorAll('.nav-link:not(.dropdown-toggle)');
+            let activeLinkFound = false;
 
+            // First pass: exact matches
             navLinks.forEach(link => {
                 const linkUrl = link.getAttribute('href');
-                if (linkUrl && currentUrl.startsWith(linkUrl) && linkUrl !== '/') {
+                if (linkUrl === currentUrl) {
                     link.classList.add('active');
-                    link.style.fontWeight = 'bold';
+                    link.style.fontWeight = '600';
+                    link.style.color = '#ff6a00';
+                    activeLinkFound = true;
                 }
+            });
+
+            // Second pass: partial matches if no exact match found
+            if (!activeLinkFound) {
+                navLinks.forEach(link => {
+                    const linkUrl = link.getAttribute('href');
+                    if (linkUrl && linkUrl !== '/' && currentUrl.startsWith(linkUrl)) {
+                        link.classList.add('active');
+                        link.style.fontWeight = '600';
+                        link.style.color = '#ff6a00';
+                    }
+                });
+            }
+
+            // Home page special case
+            if (currentUrl === '/' || currentUrl === '/Home' || currentUrl === '/Home/Index') {
+                const homeLink = document.querySelector('a[href="/"], a[href="/Home"], a[href="/Home/Index"]');
+                if (homeLink) {
+                    homeLink.classList.add('active');
+                    homeLink.style.fontWeight = '600';
+                    homeLink.style.color = '#ff6a00';
+                }
+            }
+
+            // Check session every 5 minutes
+            setInterval(checkSession, 300000);
+
+            // Initialize tooltips
+            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                }, 5000);
             });
         });
     </script>

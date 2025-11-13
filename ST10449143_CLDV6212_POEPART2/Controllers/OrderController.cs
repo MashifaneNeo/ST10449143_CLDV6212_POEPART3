@@ -2,6 +2,7 @@
 using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Models.ViewModels;
 using ST10449143_CLDV6212_POEPART1.Services;
+using ST10449143_CLDV6212_POEPART1.Helpers;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
@@ -14,209 +15,232 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _api = api;
         }
 
-        // Authentication helpers
-        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
-        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
-        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
-        private string CurrentUsername => HttpContext.Session.GetString("Username") ?? string.Empty;
+        private void CheckAuthentication()
+        {
+            if (!AuthorizationHelper.IsAuthenticated(HttpContext))
+            {
+                TempData["Error"] = "Please login to access orders.";
+                throw new UnauthorizedAccessException("Authentication required.");
+            }
+        }
+
+        private void CheckAdminAccess()
+        {
+            CheckAuthentication();
+            if (!AuthorizationHelper.IsAdmin(HttpContext))
+            {
+                TempData["Error"] = "Admin privileges required to manage all orders.";
+                throw new UnauthorizedAccessException("Admin access required.");
+            }
+        }
 
         public async Task<IActionResult> Index(string searchString)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to view orders.";
+                CheckAuthentication();
+
+                var orders = await _api.GetOrdersAsync();
+
+                // If user is customer, only show their orders
+                if (!AuthorizationHelper.IsAdmin(HttpContext))
+                {
+                    var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
+                    orders = orders.Where(o => o.Username == currentUsername).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(searchString))
+                {
+                    orders = orders.Where(o =>
+                        o.CustomerId.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                        o.ProductName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                        o.Status.Contains(searchString, StringComparison.OrdinalIgnoreCase)
+                    ).ToList();
+                }
+
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(orders);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            var orders = await _api.GetOrdersAsync();
-
-            // If user is not admin, only show their orders
-            if (!IsAdmin)
-            {
-                // Filter orders by current user (you may need to adjust this logic based on your data structure)
-                orders = orders.Where(o => o.Username == CurrentUsername).ToList();
-            }
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                orders = orders.Where(o =>
-                    o.CustomerId.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                    o.ProductName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                    o.Status.Contains(searchString, StringComparison.OrdinalIgnoreCase)
-                ).ToList();
-            }
-
-            ViewBag.IsAdmin = IsAdmin;
-            return View(orders);
         }
 
         public async Task<IActionResult> Create()
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to create orders.";
+                CheckAuthentication();
+
+                var customers = await _api.GetCustomersAsync();
+                var products = await _api.GetProductsAsync();
+
+                var viewModel = new OrderCreateViewModel
+                {
+                    Customers = customers,
+                    Products = products
+                };
+
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(viewModel);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            var customers = await _api.GetCustomersAsync();
-            var products = await _api.GetProductsAsync();
-
-            var viewModel = new OrderCreateViewModel
-            {
-                Customers = customers,
-                Products = products
-            };
-            return View(viewModel);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(OrderCreateViewModel model)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to create orders.";
+                CheckAuthentication();
+
+                if (ModelState.IsValid)
+                {
+                    try
+                    {
+                        var order = await _api.CreateOrderAsync(model.CustomerId, model.ProductId, model.Quantity);
+                        TempData["Success"] = "Order created successfully!";
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception ex)
+                    {
+                        ModelState.AddModelError("", $"Error creating order: {ex.Message}");
+                    }
+                }
+
+                await PopulateDropdowns(model);
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(model);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    var order = await _api.CreateOrderAsync(model.CustomerId, model.ProductId, model.Quantity);
-                    TempData["Success"] = "Order created successfully!";
-                    return RedirectToAction(nameof(Index));
-                }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error creating order: {ex.Message}");
-                }
-            }
-
-            await PopulateDropdowns(model);
-            return View(model);
         }
 
         public async Task<IActionResult> Details(string id)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to view order details.";
+                CheckAuthentication();
+
+                if (string.IsNullOrEmpty(id))
+                {
+                    return NotFound();
+                }
+
+                var order = await _api.GetOrderAsync(id);
+                if (order == null)
+                {
+                    return NotFound();
+                }
+
+                // Check if customer is viewing their own order
+                if (!AuthorizationHelper.IsAdmin(HttpContext) && order.Username != AuthorizationHelper.GetUserName(HttpContext))
+                {
+                    TempData["Error"] = "You can only view your own orders.";
+                    return RedirectToAction("AccessDenied", "Account");
+                }
+
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(order);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            if (string.IsNullOrEmpty(id))
-            {
-                return NotFound();
-            }
-
-            var order = await _api.GetOrderAsync(id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-
-            // Check if user has permission to view this order
-            if (!IsAdmin && order.Username != CurrentUsername)
-            {
-                TempData["Error"] = "Access denied. You can only view your own orders.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            return View(order);
         }
 
         public async Task<IActionResult> Edit(string id)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to edit orders.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (!IsAdmin)
+                if (string.IsNullOrEmpty(id))
+                {
+                    return NotFound();
+                }
+
+                var order = await _api.GetOrderAsync(id);
+                if (order == null)
+                {
+                    return NotFound();
+                }
+
+                return View(order);
+            }
+            catch (UnauthorizedAccessException)
             {
-                TempData["Error"] = "Access denied. Only administrators can edit orders.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("AccessDenied", "Account");
             }
-
-            if (string.IsNullOrEmpty(id))
-            {
-                return NotFound();
-            }
-
-            var order = await _api.GetOrderAsync(id);
-            if (order == null)
-            {
-                return NotFound();
-            }
-
-            return View(order);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Order order)
         {
-            if (!IsAuthenticated || !IsAdmin)
+            try
             {
-                TempData["Error"] = "Access denied.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (ModelState.IsValid)
-            {
-                try
+                if (ModelState.IsValid)
                 {
-                    await _api.UpdateOrderStatusAsync(order.Id, order.Status);
-                    TempData["Success"] = "Order updated successfully!";
-                    return RedirectToAction(nameof(Index));
+                    try
+                    {
+                        await _api.UpdateOrderStatusAsync(order.Id, order.Status);
+                        TempData["Success"] = "Order updated successfully!";
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception ex)
+                    {
+                        ModelState.AddModelError("", $"Error updating order: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("", $"Error updating order: {ex.Message}");
-                }
+                return View(order);
             }
-            return View(order);
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
         }
 
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
-            if (!IsAuthenticated)
-            {
-                TempData["Error"] = "Please login to delete orders.";
-                return RedirectToAction("Login", "Account");
-            }
-
-            if (!IsAdmin)
-            {
-                TempData["Error"] = "Access denied. Only administrators can delete orders.";
-                return RedirectToAction(nameof(Index));
-            }
-
             try
             {
-                await _api.DeleteOrderAsync(id);
-                TempData["Success"] = "Order deleted successfully!";
+                CheckAdminAccess();
+
+                try
+                {
+                    await _api.DeleteOrderAsync(id);
+                    TempData["Success"] = "Order deleted successfully!";
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"Error deleting order: {ex.Message}";
+                }
+                return RedirectToAction(nameof(Index));
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                TempData["Error"] = $"Error deleting order: {ex.Message}";
+                return RedirectToAction("AccessDenied", "Account");
             }
-            return RedirectToAction(nameof(Index));
         }
 
         [HttpGet]
         public async Task<JsonResult> GetProductPrice(string productId)
         {
-            if (!IsAuthenticated)
-            {
-                return Json(new { success = false, message = "Authentication required" });
-            }
-
             try
             {
+                CheckAuthentication();
+
                 var product = await _api.GetProductAsync(productId);
                 if (product != null)
                 {
@@ -239,19 +263,23 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateOrderStatus(string id, string newStatus)
         {
-            if (!IsAuthenticated || !IsAdmin)
-            {
-                return Json(new { success = false, message = "Access denied" });
-            }
-
             try
             {
-                await _api.UpdateOrderStatusAsync(id, newStatus);
-                return Json(new { success = true, message = $"Order status updated to {newStatus}" });
+                CheckAdminAccess();
+
+                try
+                {
+                    await _api.UpdateOrderStatusAsync(id, newStatus);
+                    return Json(new { success = true, message = $"Order status updated to {newStatus}" });
+                }
+                catch (Exception ex)
+                {
+                    return Json(new { success = false, message = ex.Message });
+                }
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                return Json(new { success = false, message = ex.Message });
+                return Json(new { success = false, message = "Admin privileges required" });
             }
         }
 

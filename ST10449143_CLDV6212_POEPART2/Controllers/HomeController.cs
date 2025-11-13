@@ -3,6 +3,7 @@ using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Models.ViewModels;
 using ST10449143_CLDV6212_POEPART1.Services;
 using System.Diagnostics;
+using ST10449143_CLDV6212_POEPART1.Helpers;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
@@ -16,11 +17,6 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _api = api;
             _logger = logger;
         }
-
-        // Authentication helpers
-        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
-        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
-        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
 
         public async Task<IActionResult> Index()
         {
@@ -45,10 +41,9 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 };
 
                 // Add user info to ViewBag for display
-                ViewBag.IsAuthenticated = IsAuthenticated;
-                ViewBag.Username = HttpContext.Session.GetString("Username");
-                ViewBag.Role = HttpContext.Session.GetString("Role");
-                ViewBag.FullName = HttpContext.Session.GetString("FullName");
+                ViewBag.UserName = AuthorizationHelper.GetUserName(HttpContext);
+                ViewBag.UserRole = AuthorizationHelper.GetUserRole(HttpContext);
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
 
                 return View(vm);
             }
@@ -62,13 +57,11 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         public IActionResult Privacy()
         {
-            // Privacy page is public
             return View();
         }
 
         public IActionResult Contact()
         {
-            // Contact page is public
             return View();
         }
 
@@ -77,11 +70,6 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
-
-        // New action for unauthorized access
-        public IActionResult AccessDenied()
-        {
-            return View();
-        }
+       
     }
 }

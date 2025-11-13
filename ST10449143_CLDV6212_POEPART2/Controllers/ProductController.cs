@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Services;
+using ST10449143_CLDV6212_POEPART1.Helpers;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
@@ -15,174 +16,194 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _logger = logger;
         }
 
-        // Authentication helpers
-        private bool IsAuthenticated => !string.IsNullOrEmpty(HttpContext.Session.GetString("UserId"));
-        private bool IsAdmin => HttpContext.Session.GetString("Role") == "Admin";
-        private string CurrentUserId => HttpContext.Session.GetString("UserId") ?? string.Empty;
+        private void CheckAuthentication()
+        {
+            if (!AuthorizationHelper.IsAuthenticated(HttpContext))
+            {
+                TempData["Error"] = "Please login to view products.";
+                throw new UnauthorizedAccessException("Authentication required.");
+            }
+        }
+
+        private void CheckAdminAccess()
+        {
+            CheckAuthentication();
+            if (!AuthorizationHelper.IsAdmin(HttpContext))
+            {
+                TempData["Error"] = "Admin privileges required to manage products.";
+                throw new UnauthorizedAccessException("Admin access required.");
+            }
+        }
 
         public async Task<IActionResult> Index(string searchString)
         {
-            // Products are visible to all authenticated users
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to browse products.";
+                CheckAuthentication();
+
+                var products = await _api.GetProductsAsync();
+
+                if (!string.IsNullOrEmpty(searchString))
+                {
+                    products = products.Where(p =>
+                        p.ProductName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                        p.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase)
+                    ).ToList();
+                }
+
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(products);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            var products = await _api.GetProductsAsync();
-
-            if (!string.IsNullOrEmpty(searchString))
-            {
-                products = products.Where(p =>
-                    p.ProductName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                    p.Description.Contains(searchString, StringComparison.OrdinalIgnoreCase)
-                ).ToList();
-            }
-
-            ViewBag.IsAdmin = IsAdmin;
-            return View(products);
         }
 
         public IActionResult Create()
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to create products.";
-                return RedirectToAction("Login", "Account");
+                CheckAdminAccess();
+                return View();
             }
-
-            if (!IsAdmin)
+            catch (UnauthorizedAccessException)
             {
-                TempData["Error"] = "Access denied. Admin privileges required to create products.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("AccessDenied", "Account");
             }
-
-            return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Product product, IFormFile? imageFile)
         {
-            if (!IsAuthenticated || !IsAdmin)
+            try
             {
-                TempData["Error"] = "Access denied.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (ModelState.IsValid)
-            {
-                try
+                if (ModelState.IsValid)
                 {
-                    if (product.Price <= 0)
+                    try
                     {
-                        ModelState.AddModelError("Price", "Price must be greater than zero.");
-                        return View(product);
-                    }
+                        if (product.Price <= 0)
+                        {
+                            ModelState.AddModelError("Price", "Price must be greater than zero.");
+                            return View(product);
+                        }
 
-                    var saved = await _api.CreateProductAsync(product, imageFile);
-                    TempData["Success"] = $"Product '{saved.ProductName}' created successfully with price {saved.Price:C}!";
-                    return RedirectToAction(nameof(Index));
+                        var saved = await _api.CreateProductAsync(product, imageFile);
+                        TempData["Success"] = $"Product '{saved.ProductName}' created successfully with price {saved.Price:C}!";
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error creating product");
+                        ModelState.AddModelError("", $"Error creating product: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error creating product");
-                    ModelState.AddModelError("", $"Error creating product: {ex.Message}");
-                }
+                return View(product);
             }
-            return View(product);
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
         }
 
         public async Task<IActionResult> Edit(string id)
         {
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to edit products.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (!IsAdmin)
+                if (string.IsNullOrEmpty(id))
+                    return NotFound();
+
+                var product = await _api.GetProductAsync(id);
+                if (product == null)
+                    return NotFound();
+
+                return View(product);
+            }
+            catch (UnauthorizedAccessException)
             {
-                TempData["Error"] = "Access denied. Admin privileges required to edit products.";
-                return RedirectToAction(nameof(Index));
+                return RedirectToAction("AccessDenied", "Account");
             }
-
-            if (string.IsNullOrEmpty(id))
-                return NotFound();
-
-            var product = await _api.GetProductAsync(id);
-            if (product == null)
-                return NotFound();
-
-            return View(product);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(Product product, IFormFile? imageFile)
         {
-            if (!IsAuthenticated || !IsAdmin)
+            try
             {
-                TempData["Error"] = "Access denied.";
-                return RedirectToAction("Login", "Account");
-            }
+                CheckAdminAccess();
 
-            if (ModelState.IsValid)
-            {
-                try
+                if (ModelState.IsValid)
                 {
-                    var updated = await _api.UpdateProductAsync(product.Id, product, imageFile);
-                    TempData["Success"] = "Product updated successfully!";
-                    return RedirectToAction(nameof(Index));
+                    try
+                    {
+                        var updated = await _api.UpdateProductAsync(product.Id, product, imageFile);
+                        TempData["Success"] = "Product updated successfully!";
+                        return RedirectToAction(nameof(Index));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error updating product: {Message}", ex.Message);
+                        ModelState.AddModelError("", $"Error updating product: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating product: {Message}", ex.Message);
-                    ModelState.AddModelError("", $"Error updating product: {ex.Message}");
-                }
+                return View(product);
             }
-            return View(product);
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
         }
 
         public async Task<IActionResult> Details(string id)
         {
-            // Product details are visible to all authenticated users
-            if (!IsAuthenticated)
+            try
             {
-                TempData["Error"] = "Please login to view product details.";
+                CheckAuthentication();
+
+                if (string.IsNullOrEmpty(id))
+                    return NotFound();
+
+                var product = await _api.GetProductAsync(id);
+                if (product == null)
+                    return NotFound();
+
+                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                return View(product);
+            }
+            catch (UnauthorizedAccessException)
+            {
                 return RedirectToAction("Login", "Account");
             }
-
-            if (string.IsNullOrEmpty(id))
-                return NotFound();
-
-            var product = await _api.GetProductAsync(id);
-            if (product == null)
-                return NotFound();
-
-            ViewBag.IsAdmin = IsAdmin;
-            return View(product);
         }
 
         [HttpPost]
         public async Task<IActionResult> Delete(string id)
         {
-            if (!IsAuthenticated || !IsAdmin)
-            {
-                TempData["Error"] = "Access denied.";
-                return RedirectToAction("Login", "Account");
-            }
-
             try
             {
-                await _api.DeleteProductAsync(id);
-                TempData["Success"] = "Product deleted successfully!";
+                CheckAdminAccess();
+
+                try
+                {
+                    await _api.DeleteProductAsync(id);
+                    TempData["Success"] = "Product deleted successfully!";
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"Error deleting product: {ex.Message}";
+                }
+                return RedirectToAction(nameof(Index));
             }
-            catch (Exception ex)
+            catch (UnauthorizedAccessException)
             {
-                TempData["Error"] = $"Error deleting product: {ex.Message}";
+                return RedirectToAction("AccessDenied", "Account");
             }
-            return RedirectToAction(nameof(Index));
         }
     }
 }
