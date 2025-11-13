@@ -31,5 +31,9 @@ namespace ST10449143_CLDV6212_POEPART1.Models
         [Required]
         [Display(Name = "Last Name")]
         public string LastName { get; set; } = string.Empty;
+
+        [Required]
+        [Display(Name = "Account Type")]
+        public string Role { get; set; } = "Customer";
     }
 }
