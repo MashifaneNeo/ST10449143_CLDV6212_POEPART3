@@ -189,6 +189,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckAdminAccess();
 
+                if (string.IsNullOrEmpty(id))
+                {
+                    TempData["Error"] = "Product ID is required.";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 try
                 {
                     await _api.DeleteProductAsync(id);
@@ -196,6 +202,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error deleting product {ProductId}", id);
                     TempData["Error"] = $"Error deleting product: {ex.Message}";
                 }
                 return RedirectToAction(nameof(Index));

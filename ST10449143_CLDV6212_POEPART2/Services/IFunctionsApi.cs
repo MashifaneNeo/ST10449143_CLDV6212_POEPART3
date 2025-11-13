@@ -27,15 +27,6 @@ namespace ST10449143_CLDV6212_POEPART1.Services
 
         // Uploads
         Task<string> UploadProofOfPaymentAsync(IFormFile file, string? orderId, string? customerName);
-
-        // cart
-        // Cart methods
-        Task<Cart> GetOrCreateCartAsync(string customerId, string username);
-        Task<Cart> GetCartAsync(string cartId);
-        Task<Cart> AddToCartAsync(string cartId, string productId, int quantity);
-        Task<Cart> UpdateCartItemAsync(string cartId, string productId, int quantity);
-        Task<Cart> RemoveFromCartAsync(string cartId, string productId);
-        Task ClearCartAsync(string cartId);
-        Task<Order> CheckoutCartAsync(string cartId);
+       
     }
 }

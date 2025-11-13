@@ -14,7 +14,6 @@ namespace ST10449143_CLDV6212_POEPART1.Services
         private const string ProductsRoute = "products";
         private const string OrdersRoute = "orders";
         private const string UploadsRoute = "uploads/proof-of-payment";
-        private const string CartsRoute = "carts";
 
         public FunctionsApiClient(IHttpClientFactory factory)
         {
@@ -155,50 +154,6 @@ namespace ST10449143_CLDV6212_POEPART1.Services
 
             var doc = await ReadJsonAsync<Dictionary<string, string>>(resp);
             return doc.TryGetValue("fileName", out var name) ? name : file.FileName;
-        }
-
-        // Cart methods
-        public async Task<Cart> GetOrCreateCartAsync(string customerId, string username)
-        {
-            var payload = new { customerId, username };
-            return await ReadJsonAsync<Cart>(await _http.PostAsync($"{CartsRoute}/get-or-create", JsonBody(payload)));
-        }
-
-        public async Task<Cart> GetCartAsync(string cartId)
-        {
-            var resp = await _http.GetAsync($"{CartsRoute}/{cartId}");
-            if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                return new Cart { Id = cartId, Items = new List<CartItem>() };
-            }
-            return await ReadJsonAsync<Cart>(resp);
-        }
-
-        public async Task<Cart> AddToCartAsync(string cartId, string productId, int quantity)
-        {
-            var payload = new { productId, quantity };
-            return await ReadJsonAsync<Cart>(await _http.PostAsync($"{CartsRoute}/{cartId}/items", JsonBody(payload)));
-        }
-
-        public async Task<Cart> UpdateCartItemAsync(string cartId, string productId, int quantity)
-        {
-            var payload = new { quantity };
-            return await ReadJsonAsync<Cart>(await _http.PutAsync($"{CartsRoute}/{cartId}/items/{productId}", JsonBody(payload)));
-        }
-
-        public async Task<Cart> RemoveFromCartAsync(string cartId, string productId)
-        {
-            return await ReadJsonAsync<Cart>(await _http.DeleteAsync($"{CartsRoute}/{cartId}/items/{productId}"));
-        }
-
-        public async Task ClearCartAsync(string cartId)
-        {
-            (await _http.DeleteAsync($"{CartsRoute}/{cartId}")).EnsureSuccessStatusCode();
-        }
-
-        public async Task<Order> CheckoutCartAsync(string cartId)
-        {
-            return await ReadJsonAsync<Order>(await _http.PostAsync($"{CartsRoute}/{cartId}/checkout", null));
         }
     }
 

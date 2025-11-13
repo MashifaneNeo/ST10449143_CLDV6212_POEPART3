@@ -30,6 +30,9 @@ namespace ST10449143_CLDV6212_POEPART1.Models
         [Display(Name = "Total Amount")]
         [DataType(DataType.Currency)]
         public double TotalAmount => Items.Sum(item => item.TotalPrice);
+
+        [Display(Name = "Total Items")]
+        public int TotalItems => Items.Sum(item => item.Quantity);
     }
 
     public class CartItem
@@ -63,8 +66,7 @@ namespace ST10449143_CLDV6212_POEPART1.Models
         [DataType(DataType.Currency)]
         public double TotalPrice => UnitPrice * Quantity;
 
-        // Navigation properties
-        public Cart Cart { get; set; } = null!;
-        public Product Product { get; set; } = null!;
+        // Make Product nullable to avoid serialization issues
+        public Product? Product { get; set; }
     }
 }
