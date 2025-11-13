@@ -125,39 +125,9 @@
                                                 <i class="fas fa-shopping-cart me-2"></i>Manage All Orders
                                             </a>
                                         </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item" asp-controller="Upload" asp-action="Index">
-                                                <i class="fas fa-upload me-2"></i>File Upload
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <a class="dropdown-item" asp-controller="Account" asp-action="Register">
-                                                <i class="fas fa-user-plus me-2"></i>Create New User
-                                            </a>
-                                        </li>
                                     </ul>
                                 </li>
                             }
-                            else
-                            {
-                                <!-- Customer-only additional links -->
-                                <li class="nav-item">
-                                    <a class="nav-link" asp-controller="Upload" asp-action="Index">
-                                        <i class="fas fa-receipt me-1"></i>Upload Payment
-                                    </a>
-                                </li>
-                            }
-                        }
-                        else
-                        {
-                            <!-- Show basic navigation for non-authenticated users -->
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Product" asp-action="Index">
-                                    <i class="fas fa-box me-1"></i>Products
-                                </a>
-                            </li>
                         }
 
                         <li class="nav-item">
@@ -210,14 +180,6 @@
                                         <li>
                                             <a class="dropdown-item" asp-controller="Order" asp-action="Index">
                                                 <i class="fas fa-history me-2"></i>Order History
-                                            </a>
-                                        </li>
-                                    }
-                                    else
-                                    {
-                                        <li>
-                                            <a class="dropdown-item" asp-controller="Order" asp-action="Index">
-                                                <i class="fas fa-shopping-cart me-2"></i>View All Orders
                                             </a>
                                         </li>
                                     }
@@ -295,7 +257,7 @@
                         <i class="fas fa-store me-2"></i>ABC Retail
                     </h6>
                     <p class="mb-0 text-light opacity-75">
-                        Your trusted partner for quality products and exceptional service since 2024.
+                        Your trusted partner for quality products and exceptional service.
                     </p>
                 </div>
                 <div class="col-md-6 text-md-end">
@@ -307,13 +269,10 @@
                         <a asp-controller="Home" asp-action="Contact" class="text-light text-decoration-none">
                             <i class="fas fa-envelope me-1"></i>Contact Us
                         </a>
-                        <span class="d-none d-md-inline text-light opacity-50">|</span>
-                        <span class="text-light opacity-75">
-                            <i class="fas fa-code me-1"></i>Built with ASP.NET Core
-                        </span>
+                        <span class="d-none d-md-inline text-light opacity-50">|</span>                        
                     </div>
                     <p class="mb-0 mt-2 text-light opacity-75">
-                        &copy; 2024 ABC Retail. All rights reserved.
+                        &copy; ABC Retail. All rights reserved.
                     </p>
                 </div>
             </div>
@@ -337,49 +296,6 @@
                     }
                 })
                 .catch(error => console.error('Error updating cart summary:', error));
-        }
-
-        // Check for session timeout
-        function checkSession() {
-            fetch('@Url.Action("CheckSession", "Account")')
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.isAuthenticated) {
-                        showSessionExpiredWarning();
-                    }
-                })
-                .catch(error => console.error('Error checking session:', error));
-        }
-
-        function showSessionExpiredWarning() {
-            // Remove any existing warnings
-            const existingWarning = document.querySelector('.session-warning');
-            if (existingWarning) {
-                existingWarning.remove();
-            }
-
-            const warning = document.createElement('div');
-            warning.className = 'alert alert-warning alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-3 session-warning';
-            warning.style.zIndex = '1060';
-            warning.style.minWidth = '400px';
-            warning.innerHTML = `
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-clock me-2 fs-5"></i>
-                    <div class="flex-grow-1">
-                        <strong>Session Expired</strong><br>
-                        Your session has ended. Please <a href="@Url.Action("Login", "Account")" class="alert-link">login again</a> to continue.
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                </div>
-            `;
-            document.body.appendChild(warning);
-
-            // Auto-remove after 15 seconds
-            setTimeout(() => {
-                if (warning.parentNode) {
-                    warning.parentNode.removeChild(warning);
-                }
-            }, 15000);
         }
 
         // Enhanced active link highlighting
@@ -424,33 +340,11 @@
             // Update cart summary on page load
             updateCartSummary();
 
-            // Check session every 5 minutes
-            setInterval(checkSession, 300000);
-
             // Update cart summary every 30 seconds
             setInterval(updateCartSummary, 30000);
-
-            // Initialize tooltips
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
         });
 
-        // Auto-dismiss alerts after 5 seconds
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    if (alert.parentNode) {
-                        const bsAlert = new bootstrap.Alert(alert);
-                        bsAlert.close();
-                    }
-                }, 5000);
-            });
-        });
-
-        // Global notification function
+        // Global notification function (without auto-dismiss)
         function showNotification(message, type) {
             // Remove any existing notifications
             const existingNotifications = document.querySelectorAll('.global-notification');
@@ -467,13 +361,6 @@
                 </div>
             `;
             document.body.appendChild(notification);
-
-            // Auto-remove after 5 seconds
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
-                }
-            }, 5000);
         }
     </script>
 

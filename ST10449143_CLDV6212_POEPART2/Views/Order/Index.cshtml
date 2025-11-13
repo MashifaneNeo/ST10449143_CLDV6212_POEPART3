@@ -29,29 +29,6 @@
     }
 </div>
 
-@if (isAdmin)
-{
-    <div class="text-center mb-5 py-4 bg-light rounded shadow-sm">
-        <h5 class="fw-semibold text-dark mb-2">
-            <i class="fas fa-tasks text-warning"></i> Order Management Dashboard
-        </h5>
-        <p class="text-muted fst-italic mb-0">
-            Monitor and manage all customer orders. Update order statuses to track order progress.
-        </p>
-    </div>
-}
-else
-{
-    <div class="text-center mb-5 py-4 bg-light rounded shadow-sm">
-        <h5 class="fw-semibold text-dark mb-2">
-            <i class="fas fa-history text-warning"></i> My Order History
-        </h5>
-        <p class="text-muted fst-italic mb-0">
-            Track your orders and view order details. Contact support if you have any questions about your purchases.
-        </p>
-    </div>
-}
-
 @if (Model.Any())
 {
     <div class="table-responsive">
@@ -150,62 +127,6 @@ else
             </tbody>
         </table>
     </div>
-
-    <!-- Order Statistics for Admin -->
-    @if (isAdmin)
-    {
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="card-title mb-0">
-                            <i class="fas fa-chart-bar me-2"></i>Order Statistics
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row text-center">
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-primary">@Model.Count()</h5>
-                                    <small class="text-muted">Total Orders</small>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-info">@Model.Count(o => o.Status == "Submitted")</h5>
-                                    <small class="text-muted">Submitted</small>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-warning">@Model.Count(o => o.Status == "Processing")</h5>
-                                    <small class="text-muted">Processing</small>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-success">@Model.Count(o => o.Status == "Processed")</h5>
-                                    <small class="text-muted">Processed</small>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-success">@Model.Count(o => o.Status == "Completed")</h5>
-                                    <small class="text-muted">Completed</small>
-                                </div>
-                            </div>
-                            <div class="col-md-2">
-                                <div class="border rounded p-3">
-                                    <h5 class="text-danger">@Model.Count(o => o.Status == "Cancelled")</h5>
-                                    <small class="text-muted">Cancelled</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    }
 }
 else
 {
@@ -275,10 +196,6 @@ else
 
         function updateOrderStatus(orderId, newStatus) {
             if (confirm(`Are you sure you want to change order status to "${newStatus}"?`)) {
-                // Show loading state
-                const event = new CustomEvent('showLoading', { detail: 'Updating order status...' });
-                document.dispatchEvent(event);
-
                 fetch('/Order/UpdateStatusAjax', {
                     method: 'POST',
                     headers: {
@@ -304,10 +221,5 @@ else
                 });
             }
         }
-
-        // Initialize page
-        document.addEventListener('DOMContentLoaded', function() {
-            // Add any order-specific initialization here
-        });
     </script>
 }
