@@ -21,14 +21,14 @@ namespace ST10449143_CLDV6212_POEPART2.Functions.Helpers
                 Id: e.RowKey,
                 ProductName: e.ProductName,
                 Description: e.Description,
-                Price: (decimal)e.Price,
+                Price: (double)e.Price,
                 StockAvailable: e.StockAvailable,
                 ImageUrl: e.ImageUrl
             );
 
         public static OrderDto ToDto(OrderEntity e)
         {
-            var unitPrice = (decimal)e.UnitPrice;
+            var unitPrice = (double)e.UnitPrice;
             var total = unitPrice * e.Quantity;
 
             return new OrderDto(

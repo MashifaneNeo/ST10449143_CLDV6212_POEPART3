@@ -4,14 +4,14 @@ using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// MVC
+// Add services to the container.
 builder.Services.AddControllersWithViews();
 
 // Typed HttpClient for Azure Functions
 builder.Services.AddHttpClient("Functions", (sp, client) =>
 {
     var cfg = sp.GetRequiredService<IConfiguration>();
-    var baseUrl = cfg["Functions:BaseUrl"] ?? "st10449143-function-b8eke0ceh6aaf7c6.southafricanorth-01.azurewebsites.net";
+    var baseUrl = cfg["Functions:BaseUrl"] ?? "https://st10449143-function-b8eke0ceh6aaf7c6.southafricanorth-01.azurewebsites.net";
     client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/api/");
     client.Timeout = TimeSpan.FromSeconds(100);
 });
@@ -19,15 +19,16 @@ builder.Services.AddHttpClient("Functions", (sp, client) =>
 // Register services
 builder.Services.AddScoped<IFunctionsApi, FunctionsApiClient>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ICartService, CartService>();
 
 // Session configuration for authentication
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // Session timeout
-    options.Cookie.HttpOnly = true; // Prevent XSS
-    options.Cookie.IsEssential = true; // GDPR compliance
-    options.Cookie.SameSite = SameSiteMode.Strict; // CSRF protection
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Require HTTPS in production
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 });
 
 // Allow larger multipart uploads
@@ -36,8 +37,7 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
 });
 
-// Logging
-builder.Services.AddLogging();
+// Logging is already added by WebApplication.CreateBuilder()
 
 var app = builder.Build();
 
@@ -55,6 +55,8 @@ if (!app.Environment.IsDevelopment())
 else
 {
     app.UseDeveloperExceptionPage();
+    // Add detailed errors in development
+    app.UseStatusCodePagesWithReExecute("/Home/Error", "?statusCode={0}");
 }
 
 app.UseHttpsRedirection();
@@ -62,9 +64,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// Add Authentication BEFORE Authorization
+app.UseAuthentication();
 app.UseAuthorization();
 
-// Add session middleware - MUST be after UseRouting and before UseEndpoints
+// Session middleware - after Routing and Auth
 app.UseSession();
 
 app.MapControllerRoute(

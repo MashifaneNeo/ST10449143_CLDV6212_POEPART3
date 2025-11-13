@@ -11,6 +11,9 @@ namespace ST10449143_CLDV6212_POEPART1.Models
         [Display(Name = "Customer")]
         public string CustomerId { get; set; } = string.Empty;
 
+        [Display(Name = "Customer Name")]
+        public string CustomerName { get; set; } = string.Empty;
+
         [Display(Name = "Username")]
         public string Username { get; set; } = string.Empty;
 

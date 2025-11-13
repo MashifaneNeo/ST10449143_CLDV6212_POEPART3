@@ -3,16 +3,19 @@ using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Models.ViewModels;
 using ST10449143_CLDV6212_POEPART1.Services;
 using ST10449143_CLDV6212_POEPART1.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
     public class OrderController : Controller
     {
-        private readonly IFunctionsApi _api;
+        private readonly IFunctionsApi _functionsApi;
+        private readonly ILogger<OrderController> _logger;
 
-        public OrderController(IFunctionsApi api)
+        public OrderController(IFunctionsApi functionsApi, ILogger<OrderController> logger)
         {
-            _api = api;
+            _functionsApi = functionsApi;
+            _logger = logger;
         }
 
         private void CheckAuthentication()
@@ -40,13 +43,19 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckAuthentication();
 
-                var orders = await _api.GetOrdersAsync();
+                var orders = await _functionsApi.GetOrdersAsync();
+                var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
+                var isAdmin = AuthorizationHelper.IsAdmin(HttpContext);
 
                 // If user is customer, only show their orders
-                if (!AuthorizationHelper.IsAdmin(HttpContext))
+                if (!isAdmin)
                 {
-                    var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
                     orders = orders.Where(o => o.Username == currentUsername).ToList();
+                    _logger.LogInformation("Customer view - Showing {OrderCount} orders for user: {Username}", orders.Count, currentUsername);
+                }
+                else
+                {
+                    _logger.LogInformation("Admin view - Showing all {OrderCount} orders", orders.Count);
                 }
 
                 // Apply search filter
@@ -66,7 +75,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     orders = orders.Where(o => o.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase)).ToList();
                 }
 
-                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                ViewBag.IsAdmin = isAdmin;
                 ViewBag.SearchString = searchString;
                 ViewBag.StatusFilter = statusFilter;
                 ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
@@ -92,8 +101,8 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return RedirectToAction("Index", "Product");
                 }
 
-                var customers = await _api.GetCustomersAsync();
-                var products = await _api.GetProductsAsync();
+                var customers = await _functionsApi.GetCustomersAsync();
+                var products = await _functionsApi.GetProductsAsync();
 
                 var viewModel = new OrderCreateViewModel
                 {
@@ -128,7 +137,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 {
                     try
                     {
-                        var order = await _api.CreateOrderAsync(model.CustomerId, model.ProductId, model.Quantity);
+                        var order = await _functionsApi.CreateOrderAsync(model.CustomerId, model.ProductId, model.Quantity);
                         TempData["Success"] = "Order created successfully!";
                         return RedirectToAction(nameof(Index));
                     }
@@ -159,21 +168,24 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return NotFound();
                 }
 
-                var order = await _api.GetOrderAsync(id);
+                var order = await _functionsApi.GetOrderAsync(id);
                 if (order == null)
                 {
                     return NotFound();
                 }
 
+                var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
+                var isAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+
                 // Check if customer is viewing their own order
-                if (!AuthorizationHelper.IsAdmin(HttpContext) && order.Username != AuthorizationHelper.GetUserName(HttpContext))
+                if (!isAdmin && order.Username != currentUsername)
                 {
                     TempData["Error"] = "You can only view your own orders.";
                     return RedirectToAction("AccessDenied", "Account");
                 }
 
-                ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
-                ViewBag.CanEditStatus = AuthorizationHelper.IsAdmin(HttpContext);
+                ViewBag.IsAdmin = isAdmin;
+                ViewBag.CanEditStatus = isAdmin;
                 ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
 
                 return View(order);
@@ -195,7 +207,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return NotFound();
                 }
 
-                var order = await _api.GetOrderAsync(id);
+                var order = await _functionsApi.GetOrderAsync(id);
                 if (order == null)
                 {
                     return NotFound();
@@ -222,7 +234,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 {
                     try
                     {
-                        await _api.UpdateOrderStatusAsync(order.Id, order.Status);
+                        await _functionsApi.UpdateOrderStatusAsync(order.Id, order.Status);
                         TempData["Success"] = $"Order status updated to {order.Status} successfully!";
                         return RedirectToAction(nameof(Details), new { id = order.Id });
                     }
@@ -257,7 +269,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
                 try
                 {
-                    await _api.UpdateOrderStatusAsync(id, status);
+                    await _functionsApi.UpdateOrderStatusAsync(id, status);
                     TempData["Success"] = $"Order status updated to {status} successfully!";
                 }
                 catch (Exception ex)
@@ -287,7 +299,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
                 try
                 {
-                    await _api.UpdateOrderStatusAsync(id, newStatus);
+                    await _functionsApi.UpdateOrderStatusAsync(id, newStatus);
                     return Json(new { success = true, message = $"Order status updated to {newStatus}" });
                 }
                 catch (Exception ex)
@@ -310,7 +322,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
                 try
                 {
-                    await _api.DeleteOrderAsync(id);
+                    await _functionsApi.DeleteOrderAsync(id);
                     TempData["Success"] = "Order deleted successfully!";
                 }
                 catch (Exception ex)
@@ -332,7 +344,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckAuthentication();
 
-                var product = await _api.GetProductAsync(productId);
+                var product = await _functionsApi.GetProductAsync(productId);
                 if (product != null)
                 {
                     return Json(new
@@ -364,7 +376,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 }
 
                 var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
-                var orders = await _api.GetOrdersAsync();
+                var orders = await _functionsApi.GetOrdersAsync();
 
                 var customerOrders = orders
                     .Where(o => o.Username == currentUsername)
@@ -387,7 +399,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckAdminAccess();
 
-                var orders = await _api.GetOrdersAsync();
+                var orders = await _functionsApi.GetOrdersAsync();
 
                 var stats = new
                 {
@@ -410,8 +422,8 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
         private async Task PopulateDropdowns(OrderCreateViewModel model)
         {
-            model.Customers = await _api.GetCustomersAsync();
-            model.Products = await _api.GetProductsAsync();
+            model.Customers = await _functionsApi.GetCustomersAsync();
+            model.Products = await _functionsApi.GetProductsAsync();
         }
     }
 }

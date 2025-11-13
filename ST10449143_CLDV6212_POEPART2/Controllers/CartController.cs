@@ -1,20 +1,21 @@
-﻿// Controllers/CartController.cs
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using ST10449143_CLDV6212_POEPART1.Models;
 using ST10449143_CLDV6212_POEPART1.Services;
 using ST10449143_CLDV6212_POEPART1.Helpers;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace ST10449143_CLDV6212_POEPART1.Controllers
 {
     public class CartController : Controller
     {
         private readonly IFunctionsApi _functionsApi;
+        private readonly ICartService _cartService;
         private readonly ILogger<CartController> _logger;
 
-        public CartController(IFunctionsApi functionsApi, ILogger<CartController> logger)
+        public CartController(IFunctionsApi functionsApi, ICartService cartService, ILogger<CartController> logger)
         {
             _functionsApi = functionsApi;
+            _cartService = cartService;
             _logger = logger;
         }
 
@@ -33,49 +34,6 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             }
         }
 
-        private Cart GetOrCreateCart()
-        {
-            var customerId = HttpContext.Session.GetString("UserId") ?? string.Empty;
-            var username = AuthorizationHelper.GetUserName(HttpContext);
-            var cartKey = $"Cart_{customerId}";
-
-            var cartJson = HttpContext.Session.GetString(cartKey);
-            if (!string.IsNullOrEmpty(cartJson))
-            {
-                try
-                {
-                    return JsonSerializer.Deserialize<Cart>(cartJson) ?? CreateNewCart(customerId, username);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error deserializing cart from session");
-                }
-            }
-
-            return CreateNewCart(customerId, username);
-        }
-
-        private Cart CreateNewCart(string customerId, string username)
-        {
-            return new Cart
-            {
-                Id = $"cart_{Guid.NewGuid()}_{customerId}",
-                CustomerId = customerId,
-                Username = username,
-                CreatedDate = DateTime.UtcNow,
-                LastUpdated = DateTime.UtcNow,
-                IsActive = true,
-                Items = new List<CartItem>()
-            };
-        }
-
-        private void SaveCart(Cart cart)
-        {
-            var cartKey = $"Cart_{cart.CustomerId}";
-            var cartJson = JsonSerializer.Serialize(cart);
-            HttpContext.Session.SetString(cartKey, cartJson);
-        }
-
         [HttpGet]
         public async Task<IActionResult> Index()
         {
@@ -83,7 +41,10 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckCustomerAuthentication();
 
-                var cart = GetOrCreateCart();
+                var userId = HttpContext.Session.GetString("UserId");
+                var username = AuthorizationHelper.GetUserName(HttpContext);
+
+                var cart = await _cartService.GetOrCreateCartAsync(userId, username);
 
                 // Enrich cart items with product details
                 foreach (var item in cart.Items)
@@ -93,6 +54,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                         var product = await _functionsApi.GetProductAsync(item.ProductId);
                         if (product != null)
                         {
+                            // Create a temporary product object for display
                             item.Product = product;
                         }
                     }
@@ -144,42 +106,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return RedirectToAction("Index", "Product");
                 }
 
-                var cart = GetOrCreateCart();
+                var userId = HttpContext.Session.GetString("UserId");
 
-                // Check if item already exists in cart
-                var existingItem = cart.Items.FirstOrDefault(item => item.ProductId == productId);
-
-                if (existingItem != null)
-                {
-                    // Update quantity
-                    var newQuantity = existingItem.Quantity + quantity;
-                    if (product.StockAvailable < newQuantity)
-                    {
-                        TempData["Error"] = $"Cannot add more than {product.StockAvailable} items to cart.";
-                        return RedirectToAction("Index", "Product");
-                    }
-                    existingItem.Quantity = newQuantity;
-                }
-                else
-                {
-                    // Add new item
-                    var newItem = new CartItem
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        CartId = cart.Id,
-                        ProductId = productId,
-                        ProductName = product.ProductName,
-                        UnitPrice = product.Price,
-                        Quantity = quantity
-                    };
-                    cart.Items.Add(newItem);
-                }
-
-                cart.LastUpdated = DateTime.UtcNow;
-                SaveCart(cart);
+                await _cartService.AddToCartAsync(userId, productId, product.ProductName, (double)product.Price, quantity);
 
                 TempData["Success"] = $"{product.ProductName} added to cart successfully!";
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", "Cart"); // Explicitly specify controller
             }
             catch (UnauthorizedAccessException)
             {
@@ -201,38 +133,29 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckCustomerAuthentication();
 
-                var cart = GetOrCreateCart();
-                var existingItem = cart.Items.FirstOrDefault(item => item.ProductId == productId);
+                var userId = HttpContext.Session.GetString("UserId");
 
-                if (existingItem != null)
+                if (quantity > 0)
                 {
                     // Check stock if increasing quantity
-                    if (quantity > existingItem.Quantity)
+                    var currentCart = await _cartService.GetCartAsync(userId);
+                    var currentItem = currentCart?.Items.FirstOrDefault(item => item.ProductId == productId);
+
+                    if (currentItem != null && quantity > currentItem.Quantity)
                     {
                         var product = await _functionsApi.GetProductAsync(productId);
                         if (product != null && product.StockAvailable < quantity)
                         {
                             TempData["Error"] = $"Only {product.StockAvailable} items available in stock.";
-                            return RedirectToAction("Index");
+                            return RedirectToAction("Index", "Cart");
                         }
                     }
-
-                    if (quantity <= 0)
-                    {
-                        cart.Items.Remove(existingItem);
-                        TempData["Success"] = "Item removed from cart.";
-                    }
-                    else
-                    {
-                        existingItem.Quantity = quantity;
-                        TempData["Success"] = "Cart updated successfully!";
-                    }
-
-                    cart.LastUpdated = DateTime.UtcNow;
-                    SaveCart(cart);
                 }
 
-                return RedirectToAction("Index");
+                await _cartService.UpdateCartItemQuantityAsync(userId, productId, quantity);
+
+                TempData["Success"] = quantity <= 0 ? "Item removed from cart." : "Cart updated successfully!";
+                return RedirectToAction("Index", "Cart");
             }
             catch (UnauthorizedAccessException)
             {
@@ -242,7 +165,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 _logger.LogError(ex, "Error updating cart quantity");
                 TempData["Error"] = "Error updating cart. Please try again.";
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", "Cart");
             }
         }
 
@@ -254,18 +177,17 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckCustomerAuthentication();
 
-                var cart = GetOrCreateCart();
-                var itemToRemove = cart.Items.FirstOrDefault(item => item.ProductId == productId);
+                var userId = HttpContext.Session.GetString("UserId");
+                await _cartService.RemoveFromCartAsync(userId, productId);
 
-                if (itemToRemove != null)
+                TempData["Success"] = "Item removed from cart.";
+
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
                 {
-                    cart.Items.Remove(itemToRemove);
-                    cart.LastUpdated = DateTime.UtcNow;
-                    SaveCart(cart);
-                    TempData["Success"] = "Item removed from cart.";
+                    return Json(new { success = true, message = "Item removed successfully" });
                 }
 
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", "Cart");
             }
             catch (UnauthorizedAccessException)
             {
@@ -275,7 +197,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 _logger.LogError(ex, "Error removing item from cart");
                 TempData["Error"] = "Error removing item from cart. Please try again.";
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", "Cart");
             }
         }
 
@@ -287,12 +209,17 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckCustomerAuthentication();
 
-                var customerId = HttpContext.Session.GetString("UserId") ?? string.Empty;
-                var cartKey = $"Cart_{customerId}";
-                HttpContext.Session.Remove(cartKey);
+                var userId = HttpContext.Session.GetString("UserId");
+                await _cartService.ClearCartAsync(userId);
 
                 TempData["Success"] = "Cart cleared successfully!";
-                return RedirectToAction("Index");
+
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = true, message = "Cart cleared successfully" });
+                }
+
+                return RedirectToAction("Index", "Cart");
             }
             catch (UnauthorizedAccessException)
             {
@@ -302,7 +229,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 _logger.LogError(ex, "Error clearing cart");
                 TempData["Error"] = "Error clearing cart. Please try again.";
-                return RedirectToAction("Index");
+                return RedirectToAction("Index", "Cart");
             }
         }
 
@@ -314,78 +241,218 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 CheckCustomerAuthentication();
 
-                var cart = GetOrCreateCart();
+                var userId = HttpContext.Session.GetString("UserId");
+                var username = AuthorizationHelper.GetUserName(HttpContext);
 
-                if (cart.Items.Count == 0)
+                var cart = await _cartService.GetCartAsync(userId);
+                _logger.LogInformation("Checkout started - Cart ID: {CartId}, Items: {ItemCount}", cart?.CartId, cart?.Items.Count);
+
+                if (cart == null || !cart.Items.Any())
                 {
                     TempData["Error"] = "Your cart is empty. Add some products before checkout.";
-                    return RedirectToAction("Index");
+                    return RedirectToAction("Index", "Cart");
+                }
+
+                // Get or create customer record first
+                var customerId = await GetOrCreateCustomerId(userId, username);
+                if (string.IsNullOrEmpty(customerId))
+                {
+                    TempData["Error"] = "Could not create customer record. Please contact support.";
+                    return RedirectToAction("Index", "Cart");
                 }
 
                 // Validate stock before checkout
-                foreach (var item in cart.Items)
-                {
-                    var product = await _functionsApi.GetProductAsync(item.ProductId);
-                    if (product == null)
-                    {
-                        TempData["Error"] = $"Product {item.ProductName} is no longer available.";
-                        return RedirectToAction("Index");
-                    }
-
-                    if (product.StockAvailable < item.Quantity)
-                    {
-                        TempData["Error"] = $"Only {product.StockAvailable} items of {item.ProductName} available in stock.";
-                        return RedirectToAction("Index");
-                    }
-                }
-
-                // Create orders for each cart item
-                Order? mainOrder = null;
-                var customerId = HttpContext.Session.GetString("UserId") ?? string.Empty;
+                var validationErrors = new List<string>();
 
                 foreach (var item in cart.Items)
                 {
                     try
                     {
-                        var order = await _functionsApi.CreateOrderAsync(
-                            customerId,
-                            item.ProductId,
-                            item.Quantity
-                        );
+                        var product = await _functionsApi.GetProductAsync(item.ProductId);
 
-                        if (mainOrder == null)
+                        if (product == null)
                         {
-                            mainOrder = order;
+                            validationErrors.Add($"{item.ProductName} is no longer available.");
+                        }
+                        else if (product.StockAvailable < item.Quantity)
+                        {
+                            validationErrors.Add($"{item.ProductName} - Only {product.StockAvailable} available, but {item.Quantity} requested.");
                         }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error creating order for product {ProductId}", item.ProductId);
-                        throw new Exception($"Failed to create order for {item.ProductName}. Please try again.");
+                        _logger.LogError(ex, "Error validating stock for product {ProductId}", item.ProductId);
+                        validationErrors.Add($"Error checking availability for {item.ProductName}.");
                     }
                 }
 
-                // Clear cart after successful checkout
-                var cartKey = $"Cart_{customerId}";
-                HttpContext.Session.Remove(cartKey);
+                if (validationErrors.Any())
+                {
+                    var errorMessage = "Cannot proceed with checkout:\n" + string.Join("\n", validationErrors);
+                    TempData["Error"] = errorMessage;
+                    return RedirectToAction("Index", "Cart");
+                }
 
-                TempData["Success"] = $"Order placed successfully! Order ID: {mainOrder?.Id.Substring(0, 8)}... Total: {cart.TotalAmount:C}";
-                return RedirectToAction("Details", "Order", new { id = mainOrder?.Id });
+                // Create orders for each cart item
+                var successfulOrders = new List<Order>();
+                var failedOrders = new List<string>();
+
+                foreach (var item in cart.Items)
+                {
+                    try
+                    {
+                        var order = await _functionsApi.CreateOrderAsync(customerId, item.ProductId, item.Quantity);
+
+                        if (order != null && !string.IsNullOrEmpty(order.Id))
+                        {
+                            successfulOrders.Add(order);
+                        }
+                        else
+                        {
+                            failedOrders.Add(item.ProductName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Exception creating order for product: {ProductId}", item.ProductId);
+                        failedOrders.Add($"{item.ProductName} - {ex.Message}");
+                    }
+                }
+
+                // Handle results
+                if (failedOrders.Count > 0)
+                {
+                    var errorMsg = $"Failed to create orders for: {string.Join(", ", failedOrders)}. Please try again.";
+                    TempData["Error"] = errorMsg;
+                    return RedirectToAction("Index", "Cart");
+                }
+
+                if (successfulOrders.Count == 0)
+                {
+                    TempData["Error"] = "No orders were created. Please try again.";
+                    return RedirectToAction("Index", "Cart");
+                }
+
+                // Clear cart after successful checkout
+                try
+                {
+                    await _cartService.ClearCartAsync(userId);
+                    _logger.LogInformation("Cart cleared after successful checkout");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error clearing cart after checkout");
+                    // Continue anyway since orders were created
+                }
+
+                var mainOrder = successfulOrders.First();
+                var successMessage = $"Order placed successfully! {successfulOrders.Count} item(s) ordered. Order ID: {mainOrder.Id}";
+
+                TempData["Success"] = successMessage;
+
+                // FIXED: Redirect customers to products page, admins to orders page
+                if (AuthorizationHelper.IsAdmin(HttpContext))
+                {
+                    return RedirectToAction("Index", "Order");
+                }
+                else
+                {
+                    return RedirectToAction("Index", "Product");
+                }
             }
-            catch (UnauthorizedAccessException)
+            catch (UnauthorizedAccessException ex)
             {
+                _logger.LogWarning(ex, "Unauthorized access during checkout");
                 return RedirectToAction("Login", "Account");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during checkout");
-                TempData["Error"] = $"Error during checkout: {ex.Message}";
-                return RedirectToAction("Index");
+                _logger.LogError(ex, "Critical error during checkout process");
+                TempData["Error"] = $"Checkout failed: {ex.Message}. Please contact support if this continues.";
+                return RedirectToAction("Index", "Cart");
+            }
+        }
+
+        // Helper method to get or create customer ID
+        private async Task<string> GetOrCreateCustomerId(string userId, string username)
+        {
+            try
+            {
+                // First, try to get existing customer
+                var customers = await _functionsApi.GetCustomersAsync();
+                var existingCustomer = customers.FirstOrDefault(c => c.Username == username);
+
+                if (existingCustomer != null)
+                {
+                    _logger.LogInformation("Found existing customer: {CustomerId}", existingCustomer.Id);
+                    return existingCustomer.Id;
+                }
+
+                // Create new customer
+                _logger.LogInformation("Creating new customer for user: {Username}", username);
+
+                // Extract first and last name from username or use defaults
+                var nameParts = username.Split(' ');
+                var firstName = nameParts.Length > 0 ? nameParts[0] : "Customer";
+                var lastName = nameParts.Length > 1 ? nameParts[1] : "User";
+
+                var newCustomer = new Customer
+                {
+                    Name = firstName,
+                    Surname = lastName,
+                    Username = username,
+                    Email = $"{username}@example.com", // You might want to get this from user profile
+                    ShippingAddress = "Address to be provided" // You might want to get this from user profile
+                };
+
+                var createdCustomer = await _functionsApi.CreateCustomerAsync(newCustomer);
+                _logger.LogInformation("Created new customer with ID: {CustomerId}", createdCustomer.Id);
+
+                return createdCustomer.Id;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting or creating customer for user: {Username}", username);
+                return null;
             }
         }
 
         [HttpGet]
-        public IActionResult GetCartSummary()
+        public async Task<IActionResult> TestApiConnection()
+        {
+            try
+            {
+                _logger.LogInformation("Testing API connection...");
+
+                // Test products API
+                var products = await _functionsApi.GetProductsAsync();
+                _logger.LogInformation("Products API test - Found {Count} products", products?.Count ?? 0);
+
+                // Test customers API  
+                var customers = await _functionsApi.GetCustomersAsync();
+                _logger.LogInformation("Customers API test - Found {Count} customers", customers?.Count ?? 0);
+
+                return Json(new
+                {
+                    success = true,
+                    productsCount = products?.Count ?? 0,
+                    customersCount = customers?.Count ?? 0,
+                    message = "API connection test completed"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "API connection test failed");
+                return Json(new
+                {
+                    success = false,
+                    message = $"API test failed: {ex.Message}"
+                });
+            }
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetCartSummary()
         {
             try
             {
@@ -394,7 +461,13 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return Json(new { itemCount = 0, totalAmount = 0 });
                 }
 
-                var cart = GetOrCreateCart();
+                var userId = HttpContext.Session.GetString("UserId");
+                var cart = await _cartService.GetCartAsync(userId);
+
+                if (cart == null)
+                {
+                    return Json(new { itemCount = 0, totalAmount = 0 });
+                }
 
                 return Json(new
                 {
@@ -405,6 +478,31 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             catch
             {
                 return Json(new { itemCount = 0, totalAmount = 0 });
+            }
+        }
+
+        // Debug method to check customer creation
+        [HttpGet]
+        public async Task<IActionResult> DebugCheckout()
+        {
+            try
+            {
+                var userId = HttpContext.Session.GetString("UserId");
+                var username = AuthorizationHelper.GetUserName(HttpContext);
+
+                var customerId = await GetOrCreateCustomerId(userId, username);
+
+                return Json(new
+                {
+                    userId,
+                    username,
+                    customerId,
+                    message = customerId != null ? "Customer ID created/retrieved successfully" : "Failed to create customer ID"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { error = ex.Message });
             }
         }
     }
