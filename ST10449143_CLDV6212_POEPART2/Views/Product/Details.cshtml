@@ -31,24 +31,169 @@
                     <h3 class="card-title fw-bold">@Model.ProductName</h3>
                     <p class="card-text text-muted mb-2"><strong>Product ID:</strong> @Model.Id</p>
                     <p class="card-text mb-3">@Model.Description</p>
-                    <p class="card-text mb-2"><strong>Price:</strong> <span class="text-success">@Model.Price.ToString("C")</span></p>
-                    <p class="card-text mb-2">
-                        <strong>Stock Available:</strong>
-                        <span class="badge bg-@(Model.StockAvailable > 10 ? "success" : Model.StockAvailable > 0 ? "warning" : "danger")">
-                            @Model.StockAvailable
-                        </span>
-                    </p>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p class="card-text mb-2">
+                                <strong>Price:</strong>
+                                <span class="text-success fs-4">@Model.Price.ToString("C")</span>
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="card-text mb-2">
+                                <strong>Stock Available:</strong>
+                                <span class="badge bg-@(Model.StockAvailable > 10 ? "success" : Model.StockAvailable > 0 ? "warning" : "danger") fs-6">
+                                    @Model.StockAvailable
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Add to Cart Section for Customers -->
+                    @if (!ViewBag.IsAdmin)
+                    {
+                        <div class="mt-4 p-3 bg-light rounded">
+                            <h5 class="mb-3"><i class="fas fa-shopping-cart text-primary"></i> Add to Cart</h5>
+                            <form asp-controller="Cart" asp-action="AddToCart" method="post" class="row g-3 align-items-center">
+                                <input type="hidden" name="productId" value="@Model.Id" />
+                                <div class="col-auto">
+                                    <label for="quantity" class="form-label fw-semibold">Quantity:</label>
+                                </div>
+                                <div class="col-auto">
+                                    <input type="number" name="quantity" id="quantity" value="1" min="1"
+                                           max="@Model.StockAvailable" class="form-control" style="width: 100px;"
+                                           @(Model.StockAvailable <= 0 ? "disabled" : "") />
+                                </div>
+                                <div class="col-auto">
+                                    @if (Model.StockAvailable > 0)
+                                    {
+                                        <button type="submit" class="btn btn-success btn-lg">
+                                            <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button" class="btn btn-secondary btn-lg" disabled>
+                                            <i class="fas fa-times-circle me-2"></i>Out of Stock
+                                        </button>
+                                    }
+                                </div>
+                            </form>
+                            @if (Model.StockAvailable <= 0)
+                            {
+                                <div class="mt-2">
+                                    <small class="text-danger">
+                                        <i class="fas fa-exclamation-triangle me-1"></i>
+                                        This product is currently out of stock. Please check back later.
+                                    </small>
+                                </div>
+                            }
+                            else if (Model.StockAvailable < 10)
+                            {
+                                <div class="mt-2">
+                                    <small class="text-warning">
+                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                        Only @Model.StockAvailable items left in stock!
+                                    </small>
+                                </div>
+                            }
+                        </div>
+                    }
 
                     <div class="mt-4">
-                        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
-                            <i class="fas fa-edit"></i> Edit
-                        </a>
-                        <a asp-action="Index" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left"></i> Back
+                        @if (ViewBag.IsAdmin)
+                        {
+                            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary me-2">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                        }
+                        <a asp-action="Index" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Products
                         </a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Product Features Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i>Product Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-tag me-2 text-primary"></i>Product Details</h6>
+                            <ul class="list-unstyled">
+                                <li><strong>Product ID:</strong> <code>@Model.Id</code></li>
+                                <li><strong>Name:</strong> @Model.ProductName</li>
+                                <li><strong>Price:</strong> <span class="text-success">@Model.Price.ToString("C")</span></li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-cubes me-2 text-success"></i>Inventory</h6>
+                            <ul class="list-unstyled">
+                                <li>
+                                    <strong>Stock Status:</strong>
+                                    @if (Model.StockAvailable > 10)
+                                    {
+                                        <span class="badge bg-success">In Stock</span>
+                                    }
+                                    else if (Model.StockAvailable > 0)
+                                    {
+                                        <span class="badge bg-warning">Low Stock</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Out of Stock</span>
+                                    }
+                                </li>
+                                <li><strong>Available Quantity:</strong> @Model.StockAvailable units</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script>
+        // Update cart summary when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCartSummary();
+        });
+
+        function updateCartSummary() {
+            fetch('@Url.Action("GetCartSummary", "Cart")')
+                .then(response => response.json())
+                .then(data => {
+                    const cartBadge = document.getElementById('cartBadge');
+                    if (cartBadge) {
+                        cartBadge.textContent = data.itemCount;
+                        cartBadge.style.display = data.itemCount > 0 ? 'inline' : 'none';
+                    }
+                })
+                .catch(error => console.error('Error updating cart summary:', error));
+        }
+
+        // Quantity validation
+        document.getElementById('quantity')?.addEventListener('change', function() {
+            const maxStock = @Model.StockAvailable;
+            const currentValue = parseInt(this.value);
+
+            if (currentValue > maxStock) {
+                this.value = maxStock;
+                alert(`Only ${maxStock} items available in stock.`);
+            } else if (currentValue < 1) {
+                this.value = 1;
+            }
+        });
+    </script>
+}

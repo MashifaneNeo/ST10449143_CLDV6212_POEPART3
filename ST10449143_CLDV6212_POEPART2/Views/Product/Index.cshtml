@@ -6,9 +6,12 @@
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-box"></i> Products</h2>
-    <a asp-action="Create" class="btn btn-primary">
-        <i class="fas fa-plus"></i> Add New Product
-    </a>
+    @if (ViewBag.IsAdmin)
+    {
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Product
+        </a>
+    }
 </div>
 
 <!-- Search Form -->
@@ -84,16 +87,38 @@
                         </td>
                         <td>
                             <div class="btn-group" role="group">
-                                <a asp-action="Details" asp-route-id="@product.Id" class="btn btn-sm btn-outline-info">
+                                <a asp-action="Details" asp-route-id="@product.Id" class="btn btn-sm btn-outline-info" title="View Details">
                                     <i class="fas fa-eye"></i>
                                 </a>
-                                <a asp-action="Edit" asp-route-id="@product.Id" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <button type="button" class="btn btn-sm btn-outline-danger"
-                                        onclick="confirmDelete('@product.Id', '@product.ProductName')">
-                                    <i class="fas fa-trash"></i>
-                                </button>
+                                @if (ViewBag.IsAdmin)
+                                {
+                                    <a asp-action="Edit" asp-route-id="@product.Id" class="btn btn-sm btn-outline-primary" title="Edit Product">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            onclick="confirmDelete('@product.Id', '@product.ProductName')" title="Delete Product">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                }
+                                else
+                                {
+                                    <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-inline">
+                                        <input type="hidden" name="productId" value="@product.Id" />
+                                        <input type="hidden" name="quantity" value="1" />
+                                        @if (product.StockAvailable > 0)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-success" title="Add to Cart">
+                                                <i class="fas fa-cart-plus"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="button" class="btn btn-sm btn-secondary" disabled title="Out of Stock">
+                                                <i class="fas fa-cart-plus"></i>
+                                            </button>
+                                        }
+                                    </form>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -106,7 +131,14 @@ else
 {
     <div class="alert alert-info">
         <i class="fas fa-info-circle"></i> No products found.
-        <a asp-action="Create" class="alert-link">Add your first product</a>!
+        @if (ViewBag.IsAdmin)
+        {
+            <a asp-action="Create" class="alert-link">Add your first product</a>
+        }
+        else
+        {
+            <span>Please check back later for new products.</span>
+        }
     </div>
 }
 
@@ -138,6 +170,87 @@ else
             document.getElementById('productName').textContent = productName;
             document.getElementById('productId').value = productId;
             new bootstrap.Modal(document.getElementById('deleteModal')).show();
+        }
+
+        // Add to Cart success notification
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if we're coming from an Add to Cart action
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('addedToCart') === 'true') {
+                showNotification('Product added to cart successfully!', 'success');
+            }
+
+            // Update cart summary in navbar
+            updateCartSummary();
+        });
+
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            notification.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'} me-2"></i>
+                    <div class="flex-grow-1">${message}</div>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.body.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+
+        function updateCartSummary() {
+            fetch('@Url.Action("GetCartSummary", "Cart")')
+                .then(response => response.json())
+                .then(data => {
+                    const cartBadge = document.getElementById('cartBadge');
+                    const cartTotal = document.getElementById('cartTotal');
+
+                    if (cartBadge) {
+                        cartBadge.textContent = data.itemCount;
+                        cartBadge.style.display = data.itemCount > 0 ? 'inline' : 'none';
+                    }
+
+                    if (cartTotal) {
+                        cartTotal.textContent = `Total: $${data.totalAmount.toFixed(2)}`;
+                    }
+                })
+                .catch(error => console.error('Error updating cart summary:', error));
+        }
+
+        // Quick add to cart functionality
+        function quickAddToCart(productId, productName) {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '@Url.Action("AddToCart", "Cart")';
+
+            const productIdInput = document.createElement('input');
+            productIdInput.type = 'hidden';
+            productIdInput.name = 'productId';
+            productIdInput.value = productId;
+
+            const quantityInput = document.createElement('input');
+            quantityInput.type = 'hidden';
+            quantityInput.name = 'quantity';
+            quantityInput.value = '1';
+
+            const tokenInput = document.createElement('input');
+            tokenInput.type = 'hidden';
+            tokenInput.name = '__RequestVerificationToken';
+            tokenInput.value = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+            form.appendChild(productIdInput);
+            form.appendChild(quantityInput);
+            form.appendChild(tokenInput);
+            document.body.appendChild(form);
+            form.submit();
         }
     </script>
 }

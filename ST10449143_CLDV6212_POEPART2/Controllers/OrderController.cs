@@ -34,7 +34,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             }
         }
 
-        public async Task<IActionResult> Index(string searchString)
+        public async Task<IActionResult> Index(string searchString, string statusFilter = "")
         {
             try
             {
@@ -49,17 +49,29 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     orders = orders.Where(o => o.Username == currentUsername).ToList();
                 }
 
+                // Apply search filter
                 if (!string.IsNullOrEmpty(searchString))
                 {
                     orders = orders.Where(o =>
                         o.CustomerId.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
                         o.ProductName.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
-                        o.Status.Contains(searchString, StringComparison.OrdinalIgnoreCase)
+                        o.Status.Contains(searchString, StringComparison.OrdinalIgnoreCase) ||
+                        o.Username.Contains(searchString, StringComparison.OrdinalIgnoreCase)
                     ).ToList();
                 }
 
+                // Apply status filter
+                if (!string.IsNullOrEmpty(statusFilter))
+                {
+                    orders = orders.Where(o => o.Status.Equals(statusFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+                }
+
                 ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
-                return View(orders);
+                ViewBag.SearchString = searchString;
+                ViewBag.StatusFilter = statusFilter;
+                ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
+
+                return View(orders.OrderByDescending(o => o.OrderDate).ToList());
             }
             catch (UnauthorizedAccessException)
             {
@@ -72,6 +84,13 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             try
             {
                 CheckAuthentication();
+
+                // For customers, redirect to cart system
+                if (!AuthorizationHelper.IsAdmin(HttpContext))
+                {
+                    TempData["Info"] = "Please use the shopping cart to place orders.";
+                    return RedirectToAction("Index", "Product");
+                }
 
                 var customers = await _api.GetCustomersAsync();
                 var products = await _api.GetProductsAsync();
@@ -98,6 +117,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             try
             {
                 CheckAuthentication();
+
+                if (!AuthorizationHelper.IsAdmin(HttpContext))
+                {
+                    TempData["Error"] = "Only administrators can create orders directly. Please use the shopping cart.";
+                    return RedirectToAction("Index", "Product");
+                }
 
                 if (ModelState.IsValid)
                 {
@@ -148,6 +173,9 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 }
 
                 ViewBag.IsAdmin = AuthorizationHelper.IsAdmin(HttpContext);
+                ViewBag.CanEditStatus = AuthorizationHelper.IsAdmin(HttpContext);
+                ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
+
                 return View(order);
             }
             catch (UnauthorizedAccessException)
@@ -173,6 +201,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     return NotFound();
                 }
 
+                ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
                 return View(order);
             }
             catch (UnauthorizedAccessException)
@@ -194,19 +223,81 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     try
                     {
                         await _api.UpdateOrderStatusAsync(order.Id, order.Status);
-                        TempData["Success"] = "Order updated successfully!";
-                        return RedirectToAction(nameof(Index));
+                        TempData["Success"] = $"Order status updated to {order.Status} successfully!";
+                        return RedirectToAction(nameof(Details), new { id = order.Id });
                     }
                     catch (Exception ex)
                     {
                         ModelState.AddModelError("", $"Error updating order: {ex.Message}");
                     }
                 }
+
+                ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
                 return View(order);
             }
             catch (UnauthorizedAccessException)
             {
                 return RedirectToAction("AccessDenied", "Account");
+            }
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateStatus(string id, string status)
+        {
+            try
+            {
+                CheckAdminAccess();
+
+                if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(status))
+                {
+                    TempData["Error"] = "Order ID and status are required.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                try
+                {
+                    await _api.UpdateOrderStatusAsync(id, status);
+                    TempData["Success"] = $"Order status updated to {status} successfully!";
+                }
+                catch (Exception ex)
+                {
+                    TempData["Error"] = $"Error updating order status: {ex.Message}";
+                }
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("AccessDenied", "Account");
+            }
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> UpdateStatusAjax(string id, string newStatus)
+        {
+            try
+            {
+                CheckAdminAccess();
+
+                if (string.IsNullOrEmpty(id) || string.IsNullOrEmpty(newStatus))
+                {
+                    return Json(new { success = false, message = "Order ID and status are required." });
+                }
+
+                try
+                {
+                    await _api.UpdateOrderStatusAsync(id, newStatus);
+                    return Json(new { success = true, message = $"Order status updated to {newStatus}" });
+                }
+                catch (Exception ex)
+                {
+                    return Json(new { success = false, message = ex.Message });
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Json(new { success = false, message = "Admin privileges required" });
             }
         }
 
@@ -260,26 +351,60 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateOrderStatus(string id, string newStatus)
+        [HttpGet]
+        public async Task<IActionResult> CustomerOrders()
+        {
+            try
+            {
+                CheckAuthentication();
+
+                if (AuthorizationHelper.IsAdmin(HttpContext))
+                {
+                    return RedirectToAction("Index");
+                }
+
+                var currentUsername = AuthorizationHelper.GetUserName(HttpContext);
+                var orders = await _api.GetOrdersAsync();
+
+                var customerOrders = orders
+                    .Where(o => o.Username == currentUsername)
+                    .OrderByDescending(o => o.OrderDate)
+                    .ToList();
+
+                ViewBag.IsAdmin = false;
+                return View("Index", customerOrders);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return RedirectToAction("Login", "Account");
+            }
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetOrderStats()
         {
             try
             {
                 CheckAdminAccess();
 
-                try
+                var orders = await _api.GetOrdersAsync();
+
+                var stats = new
                 {
-                    await _api.UpdateOrderStatusAsync(id, newStatus);
-                    return Json(new { success = true, message = $"Order status updated to {newStatus}" });
-                }
-                catch (Exception ex)
-                {
-                    return Json(new { success = false, message = ex.Message });
-                }
+                    totalOrders = orders.Count,
+                    submittedOrders = orders.Count(o => o.Status == "Submitted"),
+                    processingOrders = orders.Count(o => o.Status == "Processing"),
+                    processedOrders = orders.Count(o => o.Status == "Processed"),
+                    completedOrders = orders.Count(o => o.Status == "Completed"),
+                    cancelledOrders = orders.Count(o => o.Status == "Cancelled"),
+                    totalRevenue = orders.Where(o => o.Status != "Cancelled").Sum(o => o.TotalPrice)
+                };
+
+                return Json(new { success = true, data = stats });
             }
-            catch (UnauthorizedAccessException)
+            catch (Exception ex)
             {
-                return Json(new { success = false, message = "Admin privileges required" });
+                return Json(new { success = false, message = ex.Message });
             }
         }
 
