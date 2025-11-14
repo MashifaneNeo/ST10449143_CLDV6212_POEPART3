@@ -14,18 +14,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             _api = api;
         }
 
-        private void CheckAdminAccess()
+        private void CheckAuthentication()
         {
             if (!AuthorizationHelper.IsAuthenticated(HttpContext))
             {
-                TempData["Error"] = "Please login to access uploads.";
+                TempData["Error"] = "Please login to upload files.";
                 throw new UnauthorizedAccessException("Authentication required.");
-            }
-
-            if (!AuthorizationHelper.IsAdmin(HttpContext))
-            {
-                TempData["Error"] = "Admin privileges required to access file uploads.";
-                throw new UnauthorizedAccessException("Admin access required.");
             }
         }
 
@@ -33,12 +27,12 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         {
             try
             {
-                CheckAdminAccess();
+                CheckAuthentication();
                 return View(new FileUploadModel());
             }
             catch (UnauthorizedAccessException)
             {
-                return RedirectToAction("AccessDenied", "Account");
+                return RedirectToAction("Login", "Account");
             }
         }
 
@@ -48,7 +42,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         {
             try
             {
-                CheckAdminAccess();
+                CheckAuthentication();
 
                 if (ModelState.IsValid)
                 {
@@ -80,7 +74,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             }
             catch (UnauthorizedAccessException)
             {
-                return RedirectToAction("AccessDenied", "Account");
+                return RedirectToAction("Login", "Account");
             }
         }
     }

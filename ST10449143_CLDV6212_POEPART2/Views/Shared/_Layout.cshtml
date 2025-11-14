@@ -340,13 +340,13 @@
             // Update cart summary on page load
             updateCartSummary();
 
-            // Update cart summary every 30 seconds
+            
             setInterval(updateCartSummary, 30000);
         });
 
         // Global notification function (without auto-dismiss)
         function showNotification(message, type) {
-            // Remove any existing notifications
+            
             const existingNotifications = document.querySelectorAll('.global-notification');
             existingNotifications.forEach(notification => notification.remove());
 

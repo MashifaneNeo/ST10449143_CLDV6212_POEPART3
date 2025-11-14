@@ -234,18 +234,39 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 {
                     try
                     {
+                        _logger.LogInformation("Updating order status - Order ID: {OrderId}, New Status: {Status}", order.Id, order.Status);
+
+                        
                         await _functionsApi.UpdateOrderStatusAsync(order.Id, order.Status);
+
                         TempData["Success"] = $"Order status updated to {order.Status} successfully!";
                         return RedirectToAction(nameof(Details), new { id = order.Id });
                     }
                     catch (Exception ex)
                     {
-                        ModelState.AddModelError("", $"Error updating order: {ex.Message}");
+                        _logger.LogError(ex, "Error updating order: {OrderId}", order.Id);
+                        ModelState.AddModelError("", $"Error updating order status: {ex.Message}");
+
+                        
+                        _logger.LogError("Order update failed for Order ID: {OrderId}, Status: {Status}", order.Id, order.Status);
                     }
+                }
+                else
+                {
+                    _logger.LogWarning("Model state invalid for order update. Errors: {Errors}",
+                        string.Join("; ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)));
+                }
+
+                
+                var currentOrder = await _functionsApi.GetOrderAsync(order.Id);
+                if (currentOrder == null)
+                {
+                    TempData["Error"] = "Order not found.";
+                    return RedirectToAction(nameof(Index));
                 }
 
                 ViewBag.AllStatuses = new List<string> { "Submitted", "Processing", "Processed", "Completed", "Cancelled" };
-                return View(order);
+                return View(currentOrder);
             }
             catch (UnauthorizedAccessException)
             {

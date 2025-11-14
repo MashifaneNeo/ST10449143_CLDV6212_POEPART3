@@ -342,7 +342,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error clearing cart after checkout");
-                    // Continue anyway since orders were created
+                    
                 }
 
                 var mainOrder = successfulOrders.First();
@@ -350,7 +350,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
 
                 TempData["Success"] = successMessage;
 
-                // FIXED: Redirect customers to products page, admins to orders page
+                // Redirect customers to products page, admins to orders page
                 if (AuthorizationHelper.IsAdmin(HttpContext))
                 {
                     return RedirectToAction("Index", "Order");
@@ -378,7 +378,7 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
         {
             try
             {
-                // First, try to get existing customer
+               
                 var customers = await _functionsApi.GetCustomersAsync();
                 var existingCustomer = customers.FirstOrDefault(c => c.Username == username);
 
@@ -401,8 +401,8 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
                     Name = firstName,
                     Surname = lastName,
                     Username = username,
-                    Email = $"{username}@example.com", // You might want to get this from user profile
-                    ShippingAddress = "Address to be provided" // You might want to get this from user profile
+                    Email = $"{username}@example.com", 
+                    ShippingAddress = "Address to be provided" 
                 };
 
                 var createdCustomer = await _functionsApi.CreateCustomerAsync(newCustomer);
@@ -424,11 +424,11 @@ namespace ST10449143_CLDV6212_POEPART1.Controllers
             {
                 _logger.LogInformation("Testing API connection...");
 
-                // Test products API
+                
                 var products = await _functionsApi.GetProductsAsync();
                 _logger.LogInformation("Products API test - Found {Count} products", products?.Count ?? 0);
 
-                // Test customers API  
+                
                 var customers = await _functionsApi.GetCustomersAsync();
                 _logger.LogInformation("Customers API test - Found {Count} customers", customers?.Count ?? 0);
 

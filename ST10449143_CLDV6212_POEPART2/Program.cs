@@ -37,11 +37,11 @@ builder.Services.Configure<FormOptions>(o =>
     o.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
 });
 
-// Logging is already added by WebApplication.CreateBuilder()
+
 
 var app = builder.Build();
 
-// Culture for decimal handling
+
 var culture = new CultureInfo("en-US");
 CultureInfo.DefaultThreadCurrentCulture = culture;
 CultureInfo.DefaultThreadCurrentUICulture = culture;

@@ -7,7 +7,7 @@ namespace ST10449143_CLDV6212_POEPART1.Models
     {
         [Key]
         [Display(Name = "Cart ID")]
-        public Guid CartId { get; set; } = Guid.NewGuid(); // Changed to Guid
+        public Guid CartId { get; set; } = Guid.NewGuid();
 
         [Required]
         [Display(Name = "User ID")]
@@ -53,7 +53,7 @@ namespace ST10449143_CLDV6212_POEPART1.Models
 
         public Cart(string userId, string username)
         {
-            CartId = Guid.NewGuid(); // Use Guid instead of string
+            CartId = Guid.NewGuid(); 
             UserId = userId;
             Username = username;
             CreatedDate = DateTime.UtcNow;
@@ -67,11 +67,11 @@ namespace ST10449143_CLDV6212_POEPART1.Models
     {
         [Key]
         [Display(Name = "Cart Item ID")]
-        public Guid CartItemId { get; set; } = Guid.NewGuid(); // Changed to Guid
+        public Guid CartItemId { get; set; } = Guid.NewGuid(); 
 
         [Required]
         [Display(Name = "Cart ID")]
-        public Guid CartId { get; set; } // Changed to Guid
+        public Guid CartId { get; set; } 
 
         [Required]
         [Display(Name = "Product ID")]
@@ -114,7 +114,7 @@ namespace ST10449143_CLDV6212_POEPART1.Models
 
         public CartItem() { }
 
-        public CartItem(Guid cartId, string productId, string productName, decimal unitPrice, int quantity) // Changed to Guid
+        public CartItem(Guid cartId, string productId, string productName, decimal unitPrice, int quantity) 
         {
             CartItemId = Guid.NewGuid();
             CartId = cartId;
@@ -125,8 +125,8 @@ namespace ST10449143_CLDV6212_POEPART1.Models
             CreatedDate = DateTime.UtcNow;
         }
 
-        // Constructor that accepts double and converts to decimal
-        public CartItem(Guid cartId, string productId, string productName, double unitPrice, int quantity) // Changed to Guid
+        
+        public CartItem(Guid cartId, string productId, string productName, double unitPrice, int quantity) 
         {
             CartItemId = Guid.NewGuid();
             CartId = cartId;

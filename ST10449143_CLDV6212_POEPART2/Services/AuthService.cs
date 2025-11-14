@@ -126,14 +126,14 @@ namespace ST10449143_CLDV6212_POEPART1.Services
 
         private string HashPassword(string password)
         {
-            // Generate a 128-bit salt
+           
             byte[] salt = new byte[128 / 8];
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(salt);
             }
 
-            // Derive a 256-bit subkey
+            
             string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
                 password: password,
                 salt: salt,

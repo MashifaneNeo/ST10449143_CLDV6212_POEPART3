@@ -300,7 +300,7 @@ namespace ST10449143_CLDV6212_POEPART1.Services
         // Enhanced CreateOrderAsync method with detailed logging
         public async Task<Order> CreateOrderAsync(string customerId, string productId, int quantity)
         {
-            _logger.LogInformation("🚀 Creating order - Customer: {CustomerId}, Product: {ProductId}, Quantity: {Quantity}",
+            _logger.LogInformation("Creating order - Customer: {CustomerId}, Product: {ProductId}, Quantity: {Quantity}",
                 customerId, productId, quantity);
 
             try
@@ -318,7 +318,7 @@ namespace ST10449143_CLDV6212_POEPART1.Services
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError("❌ Order creation failed with status {StatusCode}: {ErrorContent}",
+                    _logger.LogError("Order creation failed with status {StatusCode}: {ErrorContent}",
                         response.StatusCode, errorContent);
 
                     throw new HttpRequestException($"Order creation failed with status {response.StatusCode}: {errorContent}");
@@ -328,29 +328,29 @@ namespace ST10449143_CLDV6212_POEPART1.Services
 
                 if (order == null)
                 {
-                    _logger.LogError("❌ Order creation returned null order object");
+                    _logger.LogError("Order creation returned null order object");
                     throw new Exception("Order creation returned null response");
                 }
 
                 if (string.IsNullOrEmpty(order.Id))
                 {
-                    _logger.LogError("❌ Order creation returned order with empty ID");
+                    _logger.LogError(" Order creation returned order with empty ID");
                     throw new Exception("Order creation returned order with empty ID");
                 }
 
-                _logger.LogInformation("✅ Order created successfully - Order ID: {OrderId}, Product: {ProductId}, Quantity: {Quantity}",
+                _logger.LogInformation(" Order created successfully - Order ID: {OrderId}, Product: {ProductId}, Quantity: {Quantity}",
                     order.Id, productId, quantity);
 
                 return order;
             }
             catch (HttpRequestException httpEx)
             {
-                _logger.LogError(httpEx, "❌ HTTP error creating order for product {ProductId}", productId);
+                _logger.LogError(httpEx, " HTTP error creating order for product {ProductId}", productId);
                 throw new Exception($"Network error creating order: {httpEx.Message}", httpEx);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to create order for product {ProductId}", productId);
+                _logger.LogError(ex, " Failed to create order for product {ProductId}", productId);
                 throw new Exception($"Failed to create order for product {productId}: {ex.Message}", ex);
             }
         }
@@ -361,14 +361,52 @@ namespace ST10449143_CLDV6212_POEPART1.Services
             try
             {
                 var payload = new { status = newStatus };
-                var response = await _http.PatchAsync($"{OrdersRoute}/{id}/status", JsonBody(payload));
-                response.EnsureSuccessStatusCode();
-                _logger.LogInformation("Order status updated successfully: {OrderId} -> {NewStatus}", id, newStatus);
+
+                
+                var endpointsToTry = new[]
+                {
+            $"{OrdersRoute}/{id}/status",  
+            $"{OrdersRoute}/{id}",         
+            $"update-order-status/{id}"    
+        };
+
+                Exception lastException = null;
+
+                foreach (var endpoint in endpointsToTry)
+                {
+                    try
+                    {
+                        _logger.LogInformation("Trying to update order status via endpoint: {Endpoint}", endpoint);
+
+                        var response = await _http.PatchAsync(endpoint, JsonBody(payload));
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            _logger.LogInformation("Order status updated successfully via {Endpoint}: {OrderId} -> {NewStatus}",
+                                endpoint, id, newStatus);
+                            return; 
+                        }
+
+                        
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        _logger.LogWarning("Endpoint {Endpoint} failed with status {StatusCode}: {Error}",
+                            endpoint, response.StatusCode, errorContent);
+                    }
+                    catch (Exception ex)
+                    {
+                        lastException = ex;
+                        _logger.LogWarning("Endpoint {Endpoint} failed: {Message}", endpoint, ex.Message);
+                        
+                    }
+                }
+
+                
+                throw lastException ?? new Exception("All order status update endpoints failed");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating order status for order: {OrderId}", id);
-                throw;
+                throw new Exception($"Failed to update order status for order {id}: {ex.Message}", ex);
             }
         }
 

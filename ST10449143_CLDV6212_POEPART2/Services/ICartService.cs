@@ -62,7 +62,7 @@ namespace ST10449143_CLDV6212_POEPART1.Services
                 using var connection = new SqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                // First, check if the user exists and get their GUID
+                
                 var userGuid = await GetUserGuid(userId, connection);
                 if (userGuid == Guid.Empty)
                 {
@@ -137,7 +137,7 @@ namespace ST10449143_CLDV6212_POEPART1.Services
         {
             try
             {
-                // First try to parse as GUID
+                
                 if (Guid.TryParse(userId, out var userGuid))
                 {
                     // Verify the user exists
@@ -148,7 +148,7 @@ namespace ST10449143_CLDV6212_POEPART1.Services
                 }
                 else
                 {
-                    // If userId is not a GUID, try to find by username
+                    
                     var userCmd = new SqlCommand("SELECT UserId FROM Users WHERE Username = @Username", connection);
                     userCmd.Parameters.AddWithValue("@Username", userId);
                     var result = await userCmd.ExecuteScalarAsync();

@@ -153,12 +153,12 @@
             const submitBtn = document.getElementById('submitBtn');
 
             if (quantity > availableStock && availableStock > 0) {
-                stockWarning.textContent = `⚠️ Warning: Only ${availableStock} items in stock!`;
+                stockWarning.textContent = ` Warning: Only ${availableStock} items in stock!`;
                 stockWarning.style.display = 'block';
                 stockWarning.className = 'form-text text-danger';
                 submitBtn.disabled = true;
             } else if (quantity > 0 && quantity <= availableStock) {
-                stockWarning.textContent = `✅ ${quantity} items available`;
+                stockWarning.textContent = ` ${quantity} items available`;
                 stockWarning.style.display = 'block';
                 stockWarning.className = 'form-text text-success';
                 submitBtn.disabled = false;

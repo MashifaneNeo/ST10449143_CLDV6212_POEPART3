@@ -186,7 +186,7 @@
             const strengthIndicator = document.getElementById('passwordStrength');
 
             if (!strengthIndicator) {
-                // Create strength indicator if it doesn't exist
+                
                 const indicator = document.createElement('div');
                 indicator.id = 'passwordStrength';
                 indicator.className = 'form-text';
@@ -209,7 +209,7 @@
             indicator.innerHTML = `Password strength: <span class="${color} fw-semibold">${strength}</span>`;
         });
 
-        // Terms and conditions validation
+        
         document.querySelector('form')?.addEventListener('submit', function(e) {
             const termsCheck = document.getElementById('termsCheck');
             if (!termsCheck.checked) {
