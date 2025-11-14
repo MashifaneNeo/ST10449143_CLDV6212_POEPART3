@@ -1,4 +1,4 @@
-# CLDV6212 POE PART 3
+# CLDV6212 POE PART 3 (if theres changes post submission date its only because my video keeps getting taken down and i have to upload a new video link)
 ABC Retail:
 Project Overview
 ABC Retail is a comprehensive ASP.NET Core e-commerce web application designed to provide a seamless shopping experience for customers while offering robust management capabilities for administrators. This platform features a modern, responsive interface and implements secure authentication, shopping cart functionality and order management systems.
