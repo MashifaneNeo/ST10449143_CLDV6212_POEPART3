@@ -75,6 +75,7 @@ The application uses a relational database design with tables for users, product
 
 For technical support or questions regarding this application, please contact the development team through the appropriate channels. Include detailed information about any issues encountered.
 
-Youtube video link: https://youtu.be/PRPh7prfqsA
+Video link: https://vimeo.com/1137169128
 web app link: https://st10449143-hue5dydfgncgftbg.southafricanorth-01.azurewebsites.net/
 (if theres changes post submission date its only because my video keeps getting taken down and i have to upload a new video link)
+(Youtube kept taking my videos down)
